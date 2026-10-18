@@ -93,7 +93,7 @@ public sealed class SqlServerPersistenceIntegrationTests
             firstCopy.Nom = "First writer";
             await first.SaveChangesAsync();
             secondCopy.Nom = "Stale writer";
-            await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+            await Assert.ThrowsAsync<PilotageForfaits.Application.Commun.ConflitException>(() => second.SaveChangesAsync());
 
             await using var deletion = CreateContext(connectionString);
             var persisted = await deletion.Utilisateurs.SingleAsync(user => user.Id == userId);
