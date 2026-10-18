@@ -27,7 +27,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         // lues de façon sûre au tout début (avant les réglages propres à la fabrique de tests).
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Tests");
         Environment.SetEnvironmentVariable("Authentification__Mode", "Dev");
-        Environment.SetEnvironmentVariable("ConnectionStrings__Pilotage", "Server=inutilise-dans-les-tests");
+        Environment.SetEnvironmentVariable("ConnectionStrings__Pilotage", "Host=localhost;Database=unused;Username=postgres;Password=unused");
         var utilisateurs = new[]
         {
             ("chef", "oid-chef", "Camille", "Martin", "ChefDeProjet"),
@@ -64,7 +64,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         builder.UseEnvironment("Tests");
         builder.ConfigureTestServices(services =>
         {
-            // remplace SQL Server par SQLite en mémoire
+            // remplace PostgreSQL par SQLite en mémoire
             services.RemoveAll<DbContextOptions<PilotageDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<PilotageDbContext>>();
             services.AddDbContext<PilotageDbContext>(o => o.UseSqlite(_connexion));
