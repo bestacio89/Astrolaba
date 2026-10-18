@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Franz.Common.Mediator.Extensions;
+using PilotageForfaits.Application.Projets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
@@ -13,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ---------- Couches de l'application ----------
 builder.Services.AjouterApplication();
+builder.Services.AddFranzMediatorV2(null, typeof(ArchiverProjetCommandHandler).Assembly);
 builder.Services.AjouterInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();

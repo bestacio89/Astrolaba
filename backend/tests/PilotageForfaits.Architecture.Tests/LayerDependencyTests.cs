@@ -1,7 +1,10 @@
 using System.Reflection;
+using Franz.Common.Mediator.Handlers;
+using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
 using PilotageForfaits.Contracts.Projets;
+using PilotageForfaits.Application.Projets;
 using Xunit;
 
 namespace PilotageForfaits.Architecture.Tests;
@@ -96,6 +99,22 @@ public sealed class LayerDependencyTests
             .Select(reference => reference.Name ?? string.Empty);
 
         Assert.Contains("PilotageForfaits.Infrastructure", references);
+    }
+
+
+    [Fact]
+    public void Project_archive_command_must_use_the_Franz_mediator_contract()
+    {
+        var command = new ArchiverProjetCommand(Guid.NewGuid(), true);
+
+        Assert.IsAssignableFrom<ICommand<bool>>(command);
+    }
+
+    [Fact]
+    public void Project_archive_handler_must_implement_the_Franz_command_handler_contract()
+    {
+        Assert.True(typeof(ICommandHandler<ArchiverProjetCommand, bool>)
+            .IsAssignableFrom(typeof(ArchiverProjetCommandHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
