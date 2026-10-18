@@ -12,10 +12,12 @@ namespace PilotageForfaits.Infrastructure.Persistence;
 internal sealed class BrouillonsPersistence(PilotageDbContext db) : IBrouillonsPersistence
 {
     public async Task<IReadOnlyList<BrouillonProjet>> ListerAvecPersonnesAsync(
+        Guid utilisateurId,
         CancellationToken annulation = default) =>
         await db.Brouillons.AsNoTracking()
             .Include(brouillon => brouillon.CreePar)
             .Include(brouillon => brouillon.CoRedacteur)
+            .Where(brouillon => brouillon.CreeParId == utilisateurId || brouillon.CoRedacteurId == utilisateurId)
             .ToListAsync(annulation);
 
     public Task<BrouillonProjet?> ObtenirAvecPersonnesAsync(
