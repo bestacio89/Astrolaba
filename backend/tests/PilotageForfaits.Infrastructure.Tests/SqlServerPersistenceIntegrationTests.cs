@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PilotageForfaits.Domain.Entites;
 using PilotageForfaits.Infrastructure.Donnees;
+using PilotageForfaits.Infrastructure.Persistence;
 using Xunit;
 
 namespace PilotageForfaits.Infrastructure.Tests;
@@ -131,6 +132,52 @@ public sealed class SqlServerPersistenceIntegrationTests
             await using var verification = CreateContext(connectionString);
             Assert.Null(await verification.Utilisateurs.IgnoreQueryFilters()
                 .SingleOrDefaultAsync(user => user.Id == userId));
+        });
+    }
+
+    [SqlServerFact]
+    public async Task Journal_writer_uses_the_same_unit_of_work_as_business_mutations()
+    {
+        await WithFreshDatabaseAsync(async connectionString =>
+        {
+            Guid projectId = Guid.Empty;
+            await using (var context = CreateContext(connectionString))
+            {
+                var strategy = context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await context.Database.BeginTransactionAsync();
+                    var project = new Projet
+                    {
+                        Client = "Client",
+                        Nom = "Projet avec journal",
+                        CreeLe = DateTimeOffset.UtcNow
+                    };
+                    context.Projets.Add(project);
+                    projectId = project.Id;
+
+                    var writer = new JournalWriter(context);
+                    writer.Ajouter(new EntreeJournal
+                    {
+                        ProjetId = projectId,
+                        Le = DateTime.UtcNow,
+                        Objet = "Projet",
+                        ObjetId = projectId,
+                        Champ = "Nom",
+                        NouvelleValeur = project.Nom
+                    });
+
+                    await context.SaveChangesAsync();
+                    await transaction.RollbackAsync();
+                });
+            }
+
+            await using var verification = CreateContext(connectionString);
+            Assert.Null(await verification.Projets.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(project => project.Id == projectId));
+            Assert.Empty(await verification.Journal.IgnoreQueryFilters()
+                .Where(entry => entry.ProjetId == projectId)
+                .ToListAsync());
         });
     }
 
