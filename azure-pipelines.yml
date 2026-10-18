@@ -61,18 +61,18 @@ stages:
           - task: Cache@2
             displayName: Cache npm downloads
             inputs:
-              key: 'npm | "$(Agent.OS)" | frontend/package-lock.json'
+              key: 'npm | "$(Agent.OS)" | frontend/package.json'
               restoreKeys: |
                 npm | "$(Agent.OS)"
               path: $(Pipeline.Workspace)/.npm
           - task: Cache@2
             displayName: Cache Angular build artifacts
             inputs:
-              key: 'angular | "$(Agent.OS)" | frontend/package-lock.json | frontend/angular.json | frontend/tsconfig.json | frontend/tsconfig.app.json | frontend/tsconfig.spec.json'
+              key: 'angular | "$(Agent.OS)" | frontend/package.json | frontend/angular.json | frontend/tsconfig.json | frontend/tsconfig.app.json | frontend/tsconfig.spec.json'
               restoreKeys: |
-                angular | "$(Agent.OS)" | frontend/package-lock.json
+                angular | "$(Agent.OS)" | frontend/package.json
               path: frontend/.angular/cache
-          - script: npm ci
+          - script: npm install
             displayName: Install dependencies
             workingDirectory: frontend
             env:
