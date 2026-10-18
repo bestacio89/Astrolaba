@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Exports;
+using PilotageForfaits.Application.Projets;
 using PilotageForfaits.Infrastructure.Donnees;
 using PilotageForfaits.Infrastructure.Excel;
 using PilotageForfaits.Infrastructure.Persistence;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IJournalWriter, JournalWriter>();
         services.AddScoped<IAccesRepository, AccesRepository>();
         services.AddScoped<IChargeurDonneesProjet, ChargeurDonneesProjet>();
+        services.AddScoped<IProjetsPersistence, ProjetsPersistence>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
