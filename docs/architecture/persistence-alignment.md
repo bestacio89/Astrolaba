@@ -20,7 +20,7 @@ Application and Domain references. Persistence ports must therefore live in an
 application-facing abstraction boundary (or a dedicated persistence-contract
 assembly), not be added to API Contracts at the cost of reversing that dependency rule.
 
-The first Franz integration slice now uses Franz.Common.EntityFramework 2.3.0: PilotageDbContext inherits DbContextBase, and DI registers AddUnitOfWork<PilotageDbContext>(). Astrolaba's domain Entite hierarchy does not implement Franz's IEntity<TKey> contract. Therefore Franz's IEntity-specific auditing, soft-delete query filters, and generic entity repository registration are not assumed to apply to Astrolaba entities. Adopting those semantics requires a separately reviewed domain migration.
+The first Franz integration slice now uses Franz.Common.EntityFramework 2.3.0: PilotageDbContext inherits DbContextBase, and DI registers AddUnitOfWork<PilotageDbContext>(). Astrolaba's domain Entite hierarchy does not implement Franz's IEntity<TKey> contract. Therefore Franz's IEntity-specific auditing and soft-delete query filters do not currently apply to Astrolaba entities. The generic entity repository registration is not used because it does not provide the query shapes needed by Astrolaba's workflows. Adopting Franz's IEntity semantics requires a separately reviewed domain migration.
 
 Astrolaba currently exposes IContexteDonnees with EF Core DbSet<T> properties.
 Application services use EF query composition directly, so replacing the context
