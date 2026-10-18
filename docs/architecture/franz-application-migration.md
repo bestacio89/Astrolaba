@@ -15,7 +15,8 @@ Migrate Astrolaba application use cases to Franz Mediator commands and queries w
 - [x] Move the task mutation response model into Contracts and dispatch all ten task status, progress, date, metadata, and consumed-time mutations through Franz Mediator.
 - [ ] Migrate remaining draft read/save workflows.
 - [x] Dispatch tracking mutations for task perimeter, workshops/deliverables, weekly points, updates, references, billing, registers, expenses, and settings through Franz Mediator.
-- [ ] Migrate the remaining tracking read query and review calculation/read-model boundaries.
+- [x] Dispatch the tracking read query and current-user context query through Franz Mediator.
+- [ ] Review calculation/read-model boundaries and remaining application query surfaces.
 - [ ] Migrate remaining calculation, settings, milestones, and other application workflows.
 - [x] Add architecture assertions for migrated command/query handlers.
 - [x] Add architecture assertions for all migrated task and tracking command handlers.
