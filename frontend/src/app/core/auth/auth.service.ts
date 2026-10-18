@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { AccountInfo, InteractionRequiredAuthError, PublicClientApplication } from '@azure/msal-browser';
+import type { AccountInfo, PublicClientApplication } from '@azure/msal-browser';
 import { environment } from '../../../environments/environment';
 
 const CLE_UTILISATEUR_DEV = 'pilotage.utilisateurDev';
@@ -12,6 +12,7 @@ const CLE_UTILISATEUR_DEV = 'pilotage.utilisateurDev';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private msal: PublicClientApplication | null = null;
+  private interactionRequiredAuthError: typeof import('@azure/msal-browser').InteractionRequiredAuthError | null = null;
 
   readonly modeDev = environment.auth.mode === 'dev';
   readonly compte = signal<AccountInfo | null>(null);
@@ -21,6 +22,10 @@ export class AuthService {
   /** Appelé au démarrage de l'application, avant le premier écran. */
   async initialiser(): Promise<void> {
     if (this.modeDev) return;
+
+    // Charger MSAL à la demande évite d'inclure son runtime dans le bundle initial de l'application.
+    const { InteractionRequiredAuthError, PublicClientApplication } = await import('@azure/msal-browser');
+    this.interactionRequiredAuthError = InteractionRequiredAuthError;
     this.msal = new PublicClientApplication({
       auth: { clientId: environment.auth.clientId, authority: environment.auth.authority, redirectUri: window.location.origin },
       cache: { cacheLocation: 'sessionStorage' },
@@ -46,7 +51,9 @@ export class AuthService {
     try {
       return (await this.msal.acquireTokenSilent(demande)).accessToken;
     } catch (erreur) {
-      if (erreur instanceof InteractionRequiredAuthError) await this.msal.acquireTokenRedirect(demande);
+      if (this.interactionRequiredAuthError && erreur instanceof this.interactionRequiredAuthError) {
+        await this.msal.acquireTokenRedirect(demande);
+      }
       throw erreur;
     }
   }
