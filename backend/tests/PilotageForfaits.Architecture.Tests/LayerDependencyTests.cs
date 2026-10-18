@@ -118,6 +118,16 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Tracking_write_helpers_must_depend_on_the_focused_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(SaisieOutils).GetConstructors());
+
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(ISaisieDonneesPersistence));
+    }
+
+    [Fact]
     public void Workshop_and_deliverable_workflows_must_use_the_persistence_port()
     {
         var constructor = Assert.Single(typeof(AteliersLivrablesService).GetConstructors());
