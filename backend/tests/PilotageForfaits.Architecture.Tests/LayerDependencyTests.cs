@@ -10,6 +10,7 @@ using PilotageForfaits.Contracts.Exports;
 using PilotageForfaits.Application.Suivi;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
+using PilotageForfaits.Contracts.Suivi;
 using PilotageForfaits.Application.Projets;
 using Xunit;
 
