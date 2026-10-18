@@ -3,6 +3,9 @@ using Franz.Common.Mediator.Handlers;
 using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
+using PilotageForfaits.Application.Brouillons;
+using PilotageForfaits.Application.Import;
+using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Application.Projets;
 using Xunit;
@@ -115,6 +118,23 @@ public sealed class LayerDependencyTests
     {
         Assert.True(typeof(ICommandHandler<ArchiverProjetCommand, bool>)
             .IsAssignableFrom(typeof(ArchiverProjetCommandHandler)));
+    }
+
+    [Fact]
+    public void Migrated_application_commands_must_have_Franz_handlers()
+    {
+        Assert.True(typeof(ICommandHandler<CreerProjetVideMediatorCommand, Guid>)
+            .IsAssignableFrom(typeof(CreerProjetVideCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerProjetCommand, bool>)
+            .IsAssignableFrom(typeof(SupprimerProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ImporterTspCommand, Guid>)
+            .IsAssignableFrom(typeof(ImporterTspCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerBrouillonCommand, Guid>)
+            .IsAssignableFrom(typeof(CreerBrouillonCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerBrouillonCommand, bool>)
+            .IsAssignableFrom(typeof(SupprimerBrouillonCommandHandler)));
+        Assert.True(typeof(ICommandHandler<LancerBrouillonCommand, Guid>)
+            .IsAssignableFrom(typeof(LancerBrouillonCommandHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
