@@ -34,19 +34,7 @@ internal sealed class InitialiseurBaseDeDeveloppement(
             return;
         }
 
-        logger.LogWarning(
-            "Aucune migration trouvée : la base de développement est créée sans migration. Créez la migration initiale avant toute recette.");
-
-        await db.Database.EnsureCreatedAsync(annulation);
-
-        var manquants = await db.ElementsManquantsAsync(annulation);
-        if (manquants.Count > 0)
-        {
-            logger.LogCritical(
-                "LA BASE DE DÉVELOPPEMENT DATE D'UNE VERSION PRÉCÉDENTE : il lui manque {Manquants}. Arrêtez l'API (Ctrl+C), puis depuis le dossier du dépôt : " +
-                ".\\scripts\\reinitialiser-base.ps1 (Windows) ou ./scripts/reinitialiser-base.sh. La base est supprimée puis recréée, gérée par migrations " +
-                "(README, « Repartir propre et passer aux migrations »).",
-                string.Join(", ", manquants));
-        }
+        throw new InvalidOperationException(
+            "No EF Core migrations are available. Create and review the initial migration before starting the development API.");
     }
 }
