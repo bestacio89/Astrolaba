@@ -34,7 +34,8 @@ services still compose EF queries directly. This is not a clean persistence boun
 Focused ports now isolate project-identity lookup (`IRechercheIdentiteProjet`),
 authorization/profile persistence (`IAccesRepository`), journal appends
 (`IJournalWriter`), project calculation input loading (`IChargeurDonneesProjet`),
-and project list/detail/deletion persistence (`IProjetsPersistence`). Journal entries
+project list/detail/deletion persistence (`IProjetsPersistence`), and draft workflows
+(`IBrouillonsPersistence`). Journal entries
 are added to the current unit of work without an early commit so they commit or roll
 back with the business mutation they describe. Project calculation transformations and
 workflow authorization remain in Application; EF query composition stays in
