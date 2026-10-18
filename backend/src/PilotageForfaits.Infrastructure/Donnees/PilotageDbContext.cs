@@ -1,5 +1,6 @@
 using System.Reflection;
 using Franz.Common.EntityFramework;
+using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
@@ -14,7 +15,8 @@ namespace PilotageForfaits.Infrastructure.Donnees;
 /// </summary>
 public sealed class PilotageDbContext(
     DbContextOptions<PilotageDbContext> options,
-    IDispatcher dispatcher) : DbContextBase(options, dispatcher), IContexteDonnees
+    IDispatcher dispatcher,
+    ICurrentUserService? currentUser = null) : DbContextBase(options, dispatcher, currentUser), IContexteDonnees
 {
     private Guid? _projetIdPourSuppressionDefinitive;
     public DbSet<Utilisateur> Utilisateurs => Set<Utilisateur>();
