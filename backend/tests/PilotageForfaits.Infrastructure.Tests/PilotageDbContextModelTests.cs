@@ -60,14 +60,14 @@ public sealed class PilotageDbContextModelTests
 
         var franzLifecycleProperties = new[]
         {
-            nameof(IEntity<Guid>.Id),
-            nameof(IEntity<Guid>.IsDeleted),
-            nameof(IEntity<Guid>.DateCreated),
-            nameof(IEntity<Guid>.LastModifiedDate),
-            nameof(Entity<Guid>.CreatedBy),
-            nameof(Entity<Guid>.LastModifiedBy),
-            nameof(IEntity<Guid>.DateDeleted),
-            nameof(IEntity<Guid>.DeletedBy)
+            "Id",
+            "IsDeleted",
+            "DateCreated",
+            "LastModifiedDate",
+            "CreatedBy",
+            "LastModifiedBy",
+            "DateDeleted",
+            "DeletedBy"
         };
 
         Assert.All(franzLifecycleProperties, property =>
