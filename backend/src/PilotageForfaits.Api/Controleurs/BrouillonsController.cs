@@ -19,7 +19,7 @@ public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsServi
 {
     /// <summary>Mes brouillons (auteur ou co-rédacteur).</summary>
     [HttpGet]
-    public Task<IReadOnlyList<BrouillonResumeDto>> Lister(CancellationToken annulation) => brouillons.ListerAsync(annulation);
+    public Task<IReadOnlyList<BrouillonResumeDto>> Lister(CancellationToken annulation) => dispatcher.SendAsync(new ListerBrouillonsQuery(), annulation);
 
     /// <summary>Crée un brouillon vierge, ou repris du TSP vendu d'un projet existant.</summary>
     [HttpPost]
@@ -36,7 +36,7 @@ public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsServi
     {
         ProjetsController.VerifierFichierTsp(fichier);
         await using var flux = fichier.OpenReadStream();
-        var id = await brouillons.ImporterAsync(flux, fichier.FileName, annulation);
+        var id = await dispatcher.SendAsync(new ImporterBrouillonCommand(flux, fichier.FileName), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new BrouillonCreeReponse(id));
     }
 
@@ -52,7 +52,7 @@ public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsServi
     /// <summary>Invite (adresse e-mail) ou retire (adresse vide) le co-rédacteur.</summary>
     [HttpPut("{id:guid}/co-redacteur")]
     public Task<CoRedacteurReponse> CoRedacteur(Guid id, CoRedacteurCommande commande, CancellationToken annulation) =>
-        brouillons.DefinirCoRedacteurAsync(id, commande, annulation);
+        dispatcher.SendAsync(new DefinirCoRedacteurBrouillonCommand(id, commande), annulation);
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Supprimer(Guid id, CancellationToken annulation)
