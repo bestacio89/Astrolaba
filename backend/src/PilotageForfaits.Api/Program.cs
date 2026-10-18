@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Franz.Common.Mediator.Bootstrap;
+using Franz.Common.Mediator.Extensions;
 using PilotageForfaits.Application.Projets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
