@@ -17,7 +17,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [Authorize]
 [Route("api/projets/{id:guid}")]
 public sealed class SuiviController(
-    IDispatcher dispatcher, SuiviService suivi, PerimetreService perimetre, AteliersLivrablesService ateliers,
+    IDispatcher dispatcher, SuiviService suivi, AteliersLivrablesService ateliers,
     FacturationService facturation, RegistresService registres, DepensesService depenses, ParametresService parametres,
     ReferencesService references, MisesAJourService misesAJour, PointsHebdoService pointsHebdo)
     : ControllerBase
@@ -62,34 +62,34 @@ public sealed class SuiviController(
     // ---------------------------------------------------------------- périmètre
 
     [HttpPost("taches")]
-    public Task<ResultatSaisieDto> NouvelleTache(Guid id, NouvelleTacheCommande c, CancellationToken a) => perimetre.CreerTacheAsync(id, c, a);
+    public Task<ResultatSaisieDto> NouvelleTache(Guid id, NouvelleTacheCommande c, CancellationToken a) => dispatcher.SendAsync(new CreerTacheProjetCommand(id, c), a);
 
     /// <summary>Supprime une tâche ajoutée en cours de projet (une tâche du TSP s'annule).</summary>
     [HttpDelete("taches/{uid}")]
-    public Task<ResultatSaisieDto> SupprimerTache(Guid id, string uid, CancellationToken a) => perimetre.SupprimerTacheAsync(id, uid, a);
+    public Task<ResultatSaisieDto> SupprimerTache(Guid id, string uid, CancellationToken a) => dispatcher.SendAsync(new SupprimerTacheProjetCommand(id, uid), a);
 
     [HttpPost("taches/{uid}/annulation")]
-    public Task<ResultatSaisieDto> Annuler(Guid id, string uid, AnnulationCommande c, CancellationToken a) => perimetre.AnnulerAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Annuler(Guid id, string uid, AnnulationCommande c, CancellationToken a) => dispatcher.SendAsync(new AnnulerTacheProjetCommand(id, uid, c), a);
 
     [HttpDelete("taches/{uid}/annulation")]
-    public Task<ResultatSaisieDto> Retablir(Guid id, string uid, CancellationToken a) => perimetre.RetablirAsync(id, uid, a);
+    public Task<ResultatSaisieDto> Retablir(Guid id, string uid, CancellationToken a) => dispatcher.SendAsync(new RetablirTacheProjetCommand(id, uid), a);
 
     [HttpPost("taches/{uid}/profils")]
-    public Task<ResultatSaisieDto> AjouterProfil(Guid id, string uid, AjoutProfilCommande c, CancellationToken a) => perimetre.AjouterProfilAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> AjouterProfil(Guid id, string uid, AjoutProfilCommande c, CancellationToken a) => dispatcher.SendAsync(new AjouterProfilTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/profils/{profilId:guid}")]
     public Task<ResultatSaisieDto> ModifierAjout(Guid id, string uid, Guid profilId, ChargeAjouteeCommande c, CancellationToken a) =>
-        perimetre.ModifierAjoutAsync(id, uid, profilId, c, a);
+        dispatcher.SendAsync(new ModifierChargeAjouteeCommand(id, uid, profilId, c), a);
 
     [HttpDelete("taches/{uid}/profils/{profilId:guid}")]
-    public Task<ResultatSaisieDto> RetirerAjout(Guid id, string uid, Guid profilId, CancellationToken a) => perimetre.RetirerAjoutAsync(id, uid, profilId, a);
+    public Task<ResultatSaisieDto> RetirerAjout(Guid id, string uid, Guid profilId, CancellationToken a) => dispatcher.SendAsync(new RetirerChargeAjouteeCommand(id, uid, profilId), a);
 
     [HttpPost("taches/{uid}/reaffectations")]
-    public Task<ResultatSaisieDto> Reaffecter(Guid id, string uid, ReaffectationCommande c, CancellationToken a) => perimetre.ReaffecterAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Reaffecter(Guid id, string uid, ReaffectationCommande c, CancellationToken a) => dispatcher.SendAsync(new ReaffecterChargeTacheCommand(id, uid, c), a);
 
     [HttpDelete("taches/{uid}/reaffectations/{reaffectationId:guid}")]
     public Task<ResultatSaisieDto> AnnulerReaffectation(Guid id, string uid, Guid reaffectationId, CancellationToken a) =>
-        perimetre.AnnulerReaffectationAsync(id, uid, reaffectationId, a);
+        dispatcher.SendAsync(new AnnulerReaffectationTacheCommand(id, uid, reaffectationId), a);
 
     // ---------------------------------------------------------------- ateliers et livrables
 
