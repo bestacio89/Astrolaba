@@ -35,21 +35,6 @@ public sealed record ProjetResumeDto(
 /// <summary>Un point « à traiter » (point de vigilance qui demande une action).</summary>
 public sealed record PointATraiterDto(string Cle, string Libelle, string Niveau, string? Detail, string Valeur, string? Unite);
 
-/// <summary>Archiver (true) ou restaurer (false) un projet.</summary>
-public sealed record ArchivageCommande(bool? Archive);
-
-/// <summary>Suppression définitive : le nom du projet, retapé par l'utilisateur, confirme qu'il sait ce qu'il supprime.</summary>
-public sealed record SuppressionCommande(string? Confirmation);
-
-/// <summary>Demande de création d'un projet vide (V1 : la fiche seule).</summary>
-public sealed record CreerProjetVideCommande(
-    string Client,
-    string Nom,
-    string? Reference,
-    DateOnly Debut,
-    DateOnly FinContractuelle,
-    string? TypeContrat);
-
 /// <summary>Le projet, tel qu'affiché dans sa vue d'ensemble.</summary>
 public sealed record ProjetDetailDto(
     Guid Id,

@@ -1,4 +1,4 @@
-namespace PilotageForfaits.Application.Suivi;
+namespace PilotageForfaits.Contracts.Suivi;
 
 // ============================================================================================
 // Saisies envoyées par l'écran de suivi. Une saisie = une action de l'utilisateur dans le POC.

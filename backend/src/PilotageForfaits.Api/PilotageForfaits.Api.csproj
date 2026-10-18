@@ -6,6 +6,7 @@
     <UserSecretsId>pilotage-forfaits-api</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\PilotageForfaits.Application\PilotageForfaits.Application.csproj" />
     <ProjectReference Include="..\PilotageForfaits.Contracts\PilotageForfaits.Contracts.csproj" />
     <ProjectReference Include="..\PilotageForfaits.Infrastructure\PilotageForfaits.Infrastructure.csproj" />
   </ItemGroup>

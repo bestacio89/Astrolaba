@@ -34,6 +34,24 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Application_must_reference_contracts_for_use_case_messages()
+    {
+        var references = ApplicationAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
+
+        Assert.Contains("PilotageForfaits.Contracts", references);
+    }
+
+    [Fact]
+    public void Api_must_reference_application_directly()
+    {
+        var references = ApiAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
+
+        Assert.Contains("PilotageForfaits.Application", references);
+    }
+
+    [Fact]
     public void Domain_must_not_reference_outer_application_layers()
     {
         AssertNoProjectReferences(DomainAssembly,

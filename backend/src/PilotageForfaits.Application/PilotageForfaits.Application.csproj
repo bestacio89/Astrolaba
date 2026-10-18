@@ -4,6 +4,7 @@
     <RootNamespace>PilotageForfaits.Application</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\PilotageForfaits.Contracts\PilotageForfaits.Contracts.csproj" />
     <ProjectReference Include="..\PilotageForfaits.Domain\PilotageForfaits.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
