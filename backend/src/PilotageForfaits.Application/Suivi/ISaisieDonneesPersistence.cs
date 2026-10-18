@@ -51,6 +51,7 @@ public interface ISaisieDonneesPersistence
     void SupprimerLignesPlanReference(IEnumerable<LignePlanReference> lignes);
     Task<List<MiseAJourTache>> ListerMisesAJourTacheAsync(Guid tacheId, CancellationToken annulation);
     void SupprimerMisesAJour(IEnumerable<MiseAJourTache> misesAJour);
+    void AjouterMiseAJour(MiseAJourTache miseAJour);
     Task<List<ActionProjet>> ListerActionsTacheAsync(Guid tacheId, CancellationToken annulation);
     void SupprimerTache(Tache tache);
     Task<ChargeTache?> ObtenirChargeTacheAsync(Guid tacheId, Guid profilId, CancellationToken annulation);
