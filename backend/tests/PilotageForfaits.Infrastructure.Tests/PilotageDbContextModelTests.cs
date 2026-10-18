@@ -1,7 +1,9 @@
 using Franz.Common.Business.Domain;
 using Franz.Common.Business.Repositories;
+using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.EntityFramework.Extensions;
 using Franz.Common.Mediator.Dispatchers;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -24,6 +26,22 @@ public sealed class PilotageDbContextModelTests
 
         var dispatcherServices = new ServiceCollection().BuildServiceProvider();
         return new PilotageDbContext(options, new FranzDispatcher(dispatcherServices));
+    }
+
+    private static PilotageDbContext CreateSqliteContext(SqliteConnection connection, string? userId)
+    {
+        var options = new DbContextOptionsBuilder<PilotageDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var dispatcherServices = new ServiceCollection().BuildServiceProvider();
+        return new PilotageDbContext(options, new FranzDispatcher(dispatcherServices),
+            new FixedCurrentUserService(userId));
+    }
+
+    private sealed class FixedCurrentUserService(string? userId) : ICurrentUserService
+    {
+        public string? UserId => userId;
     }
 
     [Fact]
@@ -88,6 +106,68 @@ public sealed class PilotageDbContextModelTests
         Assert.NotEqual(Guid.Empty, new Projet().Id);
         Assert.NotEqual(Guid.Empty, new Utilisateur().Id);
         Assert.NotEqual(Guid.Empty, new Tache().Id);
+    }
+
+    [Fact]
+    public async Task SaveChanges_applies_Franz_auditing_and_soft_deletion()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateSqliteContext(connection, "entra-object-id");
+        await context.Database.EnsureCreatedAsync();
+
+        var user = new Utilisateur
+        {
+            IdentifiantExterne = "subject-1",
+            Nom = "Example",
+            Prenom = "Test",
+            Email = "test@example.invalid",
+            CreeLe = DateTimeOffset.UtcNow
+        };
+
+        context.Utilisateurs.Add(user);
+        await context.SaveChangesAsync();
+
+        Assert.Equal(1, user.Version);
+        Assert.Equal("entra-object-id", user.CreatedBy);
+        Assert.NotEqual(DateTimeOffset.MinValue, user.DateCreated);
+        Assert.False(user.IsDeleted);
+
+        context.Utilisateurs.Remove(user);
+        await context.SaveChangesAsync();
+
+        Assert.Equal(2, user.Version);
+        Assert.True(user.IsDeleted);
+        Assert.Equal("entra-object-id", user.DeletedBy);
+        Assert.Null(await context.Utilisateurs.SingleOrDefaultAsync(entity => entity.Id == user.Id));
+        Assert.NotNull(await context.Utilisateurs.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(entity => entity.Id == user.Id));
+    }
+
+    [Fact]
+    public async Task Explicit_project_removal_remains_a_transactional_permanent_delete()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateSqliteContext(connection, "entra-object-id");
+        await context.Database.EnsureCreatedAsync();
+
+        var project = new Projet
+        {
+            Client = "Client",
+            Nom = "Projet de test",
+            CreeLe = DateTimeOffset.UtcNow
+        };
+
+        context.Projets.Add(project);
+        await context.SaveChangesAsync();
+        var projectId = project.Id;
+
+        await context.MarquerProjetPourSuppressionAsync(projectId);
+        await context.SaveChangesAsync();
+
+        Assert.Null(await context.Projets.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(entity => entity.Id == projectId));
     }
 
     [Fact]
