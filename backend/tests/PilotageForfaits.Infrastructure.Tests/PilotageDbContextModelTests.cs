@@ -94,6 +94,21 @@ public sealed class PilotageDbContextModelTests
             Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.DateCreated)));
             Assert.NotNull(entityType.FindProperty(nameof(Entity<Guid>.CreatedBy)));
             Assert.NotEmpty(entityType.GetDeclaredQueryFilters());
+
+            var lifecycleNames = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "Id", "IsDeleted", "DateCreated", "LastModifiedDate",
+                "CreatedBy", "LastModifiedBy", "DateDeleted", "DeletedBy"
+            };
+            var redeclaredLifecycleProperties = entityType.ClrType
+                .GetProperties(System.Reflection.BindingFlags.Instance |
+                               System.Reflection.BindingFlags.Public |
+                               System.Reflection.BindingFlags.DeclaredOnly)
+                .Where(property => lifecycleNames.Contains(property.Name))
+                .Select(property => property.Name)
+                .ToArray();
+
+            Assert.Empty(redeclaredLifecycleProperties);
         });
     }
 
