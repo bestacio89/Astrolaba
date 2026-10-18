@@ -1,4 +1,5 @@
 using System.Globalization;
+using Franz.Common.Mediator.Pipelines.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PilotageForfaits.Application.Abstractions;
@@ -13,7 +14,8 @@ namespace PilotageForfaits.Application.Projets;
 
 /// <summary>Cas d'usage autour des projets : liste selon les habilitations, création d'un projet vide, vue d'ensemble.</summary>
 public sealed class ProjetsService(
-    IContexteDonnees db, ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge, ServiceJournal journal, ILogger<ProjetsService> traces,
+    IContexteDonnees db, IProjetRepository projetRepository, IUnitOfWork uniteTravail,
+    ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge, ServiceJournal journal, ILogger<ProjetsService> traces,
     UniciteProjet unicite)
 {
     /// <summary>Projets visibles par l'utilisateur connecté, avec leurs indicateurs principaux ; « archives » : seulement les projets archivés.</summary>
@@ -93,7 +95,7 @@ public sealed class ProjetsService(
         var role = await acces.ExigerAccesAsync(projetId, annulation);
         if (!ServiceAcces.PeutModifier(role)) throw new AccesRefuseException("Seul le chef de projet peut archiver ou restaurer ce projet.");
         var u = await acces.UtilisateurAsync(annulation);
-        var projet = await db.Projets.FirstAsync(p => p.Id == projetId, annulation);
+        var projet = await projetRepository.ObtenirPourModificationAsync(projetId, annulation);
         var avant = projet.Statut;
         if (commande.Archive is null) throw new RegleMetierException("Indiquez s'il faut archiver ou restaurer le projet.");
         if (commande.Archive == true) projet.Statut = StatutProjet.Archive;
@@ -102,7 +104,7 @@ public sealed class ProjetsService(
         if (projet.Statut == avant) return;
         journal.Noter(projetId, u.Id, "Projet", projetId, "statut", avant == StatutProjet.Archive ? "Archivé" : "Actif",
             projet.Statut == StatutProjet.Archive ? "Archivé" : "Restauré");
-        await db.SaveChangesAsync(annulation);
+        await uniteTravail.CommitAsync(annulation);
     }
 
     /// <summary>

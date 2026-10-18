@@ -1,4 +1,6 @@
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore.Metadata;
 using PilotageForfaits.Domain.Entites;
 using PilotageForfaits.Infrastructure.Donnees;
@@ -17,7 +19,8 @@ public sealed class PilotageDbContextModelTests
             .UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=PilotageForfaitsModelTests;Trusted_Connection=True;")
             .Options;
 
-        return new PilotageDbContext(options);
+        var dispatcherServices = new ServiceCollection().BuildServiceProvider();
+        return new PilotageDbContext(options, new FranzDispatcher(dispatcherServices));
     }
 
     [Fact]

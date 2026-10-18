@@ -20,6 +20,8 @@ Application and Domain references. Persistence ports must therefore live in an
 application-facing abstraction boundary (or a dedicated persistence-contract
 assembly), not be added to API Contracts at the cost of reversing that dependency rule.
 
+The first Franz integration slice now uses Franz.Common.EntityFramework 2.3.0: PilotageDbContext inherits DbContextBase, and DI registers AddUnitOfWork<PilotageDbContext>(). Astrolaba's domain Entite hierarchy does not implement Franz's IEntity<TKey> contract. Therefore Franz's IEntity-specific auditing and soft-delete query filters do not currently apply to Astrolaba entities. The generic entity repository registration is not used because it does not provide the query shapes needed by Astrolaba's workflows. Adopting Franz's IEntity semantics requires a separately reviewed domain migration.
+
 Astrolaba currently exposes IContexteDonnees with EF Core DbSet<T> properties.
 Application services use EF query composition directly, so replacing the context
 with repositories is a behavioral migration, not a mechanical rename.
@@ -28,16 +30,18 @@ with repositories is a behavioral migration, not a mechanical rename.
 
 1. **Lock down persistence invariants.** Add model-level tests for optimistic
    concurrency tokens, no cascade deletes, decimal precision, and project ownership.
-2. **Introduce the Franz persistence foundation.** Confirm the exact Franz EF package
-   APIs and transaction semantics, then adapt PilotageDbContext and DI.
-   Preserve the existing SaveChangesAsync versioning and length validation.
-   Do not enable a mediator transaction pipeline until it is proven to share the same
-   EF Core transaction and unit-of-work.
-3. **Define persistence ports.** Introduce repository contracts outside API Contracts,
-   starting with focused aggregates and query shapes required by current use cases.
-4. **Implement repositories.** Keep EF-specific includes, filtering, and persistence
-   details in Infrastructure; avoid generic repositories that hide aggregate-specific
-   queries or force loading entire tables.
+2. **Introduce the Franz persistence foundation.** Done in the initial integration slice:
+   pin Franz.Common.EntityFramework 2.3.0, derive PilotageDbContext from DbContextBase,
+   and register the explicit unit of work. Preserve Astrolaba's SaveChangesAsync versioning,
+   length validation, SQL Server provider, and retry policy. Do not enable the mediator
+   persistence pipeline until atomicity, rollback, and save behavior are covered by tests.
+3. **Define persistence ports.** Started: IProjetRepository lives in Application.Abstractions,
+   outside API Contracts, and exposes a tracked project lookup without leaking EF Core.
+4. **Implement repositories.** Started with ProjetRepository in Infrastructure. The archive/restore
+   workflow now reads through the repository and commits through Franz IUnitOfWork; other project
+   and application workflows remain on the compatibility seam. Keep EF-specific includes,
+   filtering, and persistence details in Infrastructure; avoid generic repositories that hide
+   aggregate-specific queries or force loading entire tables.
 5. **Migrate application services incrementally.** Move one cohesive workflow at a
    time, retaining authorization checks, concurrency behavior, calculations, and
    transaction boundaries. Keep IContexteDonnees only as a temporary compatibility

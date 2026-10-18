@@ -1,3 +1,4 @@
+using Franz.Common.EntityFramework.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,6 +6,7 @@ using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Infrastructure.Donnees;
 using PilotageForfaits.Infrastructure.Excel;
+using PilotageForfaits.Infrastructure.Persistence.Repositories;
 
 namespace PilotageForfaits.Infrastructure;
 
@@ -16,7 +18,9 @@ public static class DependencyInjection
         var chaine = configuration.GetConnectionString("Pilotage")
             ?? throw new InvalidOperationException("Chaîne de connexion « ConnectionStrings:Pilotage » absente de la configuration.");
         services.AddDbContext<PilotageDbContext>(o => o.UseSqlServer(chaine, sql => sql.EnableRetryOnFailure()));
+        services.AddUnitOfWork<PilotageDbContext>();
         services.AddScoped<IContexteDonnees>(sp => sp.GetRequiredService<PilotageDbContext>());
+        services.AddScoped<IProjetRepository, ProjetRepository>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();

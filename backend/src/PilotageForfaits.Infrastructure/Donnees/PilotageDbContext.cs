@@ -1,4 +1,6 @@
 using System.Reflection;
+using Franz.Common.EntityFramework;
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Domain.Commun;
@@ -10,7 +12,9 @@ namespace PilotageForfaits.Infrastructure.Donnees;
 /// Accès à la base relationnelle (SQL Server) avec Entity Framework Core.
 /// La structure des tables est décrite dans le dossier Configurations, une classe par objet du modèle de données.
 /// </summary>
-public sealed class PilotageDbContext(DbContextOptions<PilotageDbContext> options) : DbContext(options), IContexteDonnees
+public sealed class PilotageDbContext(
+    DbContextOptions<PilotageDbContext> options,
+    IDispatcher dispatcher) : DbContextBase(options, dispatcher), IContexteDonnees
 {
     public DbSet<Utilisateur> Utilisateurs => Set<Utilisateur>();
     public DbSet<Habilitation> Habilitations => Set<Habilitation>();
@@ -67,6 +71,9 @@ public sealed class PilotageDbContext(DbContextOptions<PilotageDbContext> option
         // (Évite aussi les « chemins de cascade multiples » refusés par SQL Server.)
         foreach (var lien in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()).Where(fk => !fk.IsOwnership))
             lien.DeleteBehavior = DeleteBehavior.Restrict;
+
+        // Run Franz's base behavior after all Astrolaba entities and relationships have been discovered.
+        base.OnModelCreating(modelBuilder);
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
