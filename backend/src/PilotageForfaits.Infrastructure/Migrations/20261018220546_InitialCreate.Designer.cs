@@ -116,7 +116,7 @@ namespace PilotageForfaits.Infrastructure.Migrations
 
                     b.ToTable("AchatsReels", null, t =>
                         {
-                            t.HasCheckConstraint("CK_AchatsReels_Positifs", "CAST("Quantite" AS FLOAT) > 0 AND CAST("CoutUnitaire" AS FLOAT) >= 0 AND CAST("Refacture" AS FLOAT) >= 0");
+                            t.HasCheckConstraint("CK_AchatsReels_Positifs", "CAST(\"Quantite\" AS FLOAT) > 0 AND CAST(\"CoutUnitaire\" AS FLOAT) >= 0 AND CAST(\"Refacture\" AS FLOAT) >= 0");
                         });
                 });
 
@@ -577,7 +577,7 @@ namespace PilotageForfaits.Infrastructure.Migrations
 
                     b.ToTable("ChargesTache", null, t =>
                         {
-                            t.HasCheckConstraint("CK_ChargesTache_Positives", "CAST("ChargeVendue" AS FLOAT) >= 0 AND CAST("ChargeAjoutee" AS FLOAT) >= 0");
+                            t.HasCheckConstraint("CK_ChargesTache_Positives", "CAST(\"ChargeVendue\" AS FLOAT) >= 0 AND CAST(\"ChargeAjoutee\" AS FLOAT) >= 0");
                         });
                 });
 
@@ -651,7 +651,7 @@ namespace PilotageForfaits.Infrastructure.Migrations
 
                     b.ToTable("Consommes", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Consommes_Positif", "CAST("JoursHomme" AS FLOAT) > 0");
+                            t.HasCheckConstraint("CK_Consommes_Positif", "CAST(\"JoursHomme\" AS FLOAT) > 0");
                         });
                 });
 
@@ -1194,7 +1194,7 @@ namespace PilotageForfaits.Infrastructure.Migrations
 
                     b.ToTable("FraisReels", null, t =>
                         {
-                            t.HasCheckConstraint("CK_FraisReels_Positif", "CAST("Montant" AS FLOAT) > 0");
+                            t.HasCheckConstraint("CK_FraisReels_Positif", "CAST(\"Montant\" AS FLOAT) > 0");
                         });
                 });
 
@@ -2761,7 +2761,7 @@ namespace PilotageForfaits.Infrastructure.Migrations
 
                     b.HasIndex("CleUnicite")
                         .IsUnique()
-                        .HasFilter(""CleUnicite" IS NOT NULL");
+                        .HasFilter("\"CleUnicite\" IS NOT NULL");
 
                     b.HasIndex("CreeParId");
 
@@ -3041,7 +3041,7 @@ namespace PilotageForfaits.Infrastructure.Migrations
 
                     b.ToTable("Taches", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Taches_Avancement", ""Avancement" IS NULL OR (CAST("Avancement" AS FLOAT) >= 0 AND CAST("Avancement" AS FLOAT) <= 1)");
+                            t.HasCheckConstraint("CK_Taches_Avancement", "\"Avancement\" IS NULL OR (CAST(\"Avancement\" AS FLOAT) >= 0 AND CAST(\"Avancement\" AS FLOAT) <= 1)");
                         });
                 });
 
