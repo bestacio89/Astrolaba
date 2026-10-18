@@ -4,8 +4,10 @@
 
 Align Astrolaba's persistence boundary with the patterns in
 [HeroService / Develop_Unity_V1](https://github.com/bestacio89/HeroService/tree/Develop_Unity_V1)
-while preserving Astrolaba's SQL Server schema, optimistic concurrency, restricted
+while preserving Astrolaba's business invariants, optimistic concurrency, restricted
 deletes, project integrity, authorization, calculations, and TSP import/export behavior.
+The POC database and its schema history are disposable: the target is a clean code-first
+schema for the real application, not an in-place upgrade of the POC database.
 
 ## Entity model: Franz is the source of truth
 
@@ -64,56 +66,37 @@ successful command; it is not a substitute for a transaction around multiple wri
 Remove explicit service-level saves only after verifying that every caller is dispatched
 through the mediator and that the workflow's transaction semantics remain intact.
 
-## Migration rollout: mandatory release gate
+## Code-first schema rollout: required before release
 
-There are currently **no checked-in EF migrations**. The previously generated
-`AddFranzAuditColumns` migration was removed because EF generated a full initial schema
-(`CreateTable` operations), not an incremental audit-column migration. Applying that
-migration to an existing database would fail when it encounters tables that already exist.
-Do not restore or apply that generated migration as-is.
+Astrolaba is being promoted from a proof of concept into the real application. The existing
+POC database is intentionally disposable, so there is no requirement to preserve its
+schema history or generate a legacy baseline. Do not create a baseline from the old model
+and do not carry the POC's migration history forward.
 
-Use a two-stage migration history:
-
-1. From the repository root, create a temporary worktree based on the pre-Franz `develop`
-   model so EF generates the baseline from the correct model, not the current feature model:
-
-   ```powershell
-   git worktree add -b migration/legacy-schema-baseline ..\Astrolaba-baseline develop
-   Set-Location ..\Astrolaba-baseline\backend
-   dotnet ef migrations add InitialSchemaBaseline --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
-   git add src/PilotageForfaits.Infrastructure/Migrations
-   git commit -m "[Feat][Persistence]: add legacy schema baseline"
-   $baselineCommit = git rev-parse HEAD
-   Set-Location E:\Source\Repos\Astrolaba
-   git switch feat/franz-entity-repository-migration
-   git cherry-pick $baselineCommit
-   ```
-
-   The baseline migration and snapshot must remain those generated from the pre-Franz
-   model; do not regenerate them after switching to the current model.
-2. On the feature branch, generate `AddFranzAuditColumns` against the legacy snapshot:
+1. Finish the Franz-aligned entity model and Infrastructure mappings first. Review the
+   final `PilotageDbContext` model for identity/audit columns, soft-delete filters,
+   concurrency tokens, foreign keys, indexes, and decimal precision.
+2. From the repository's `backend` directory, generate one clean initial migration from
+   the **current feature branch model**:
 
    ```powershell
-   Set-Location E:\Source\Repos\Astrolaba\backend
-   dotnet ef migrations add AddFranzAuditColumns --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
+   dotnet ef migrations add InitialCreate --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
    ```
 
-   Review every operation and the snapshot diff, especially non-nullable audit columns
-   on populated tables, existing indexes/constraints, query-filter lifecycle, and any
-   unrelated schema changes. The incremental migration should add/update the Franz
-   lifecycle schema; it must not recreate existing business tables.
-3. For a fresh database, apply both migrations in order.
-4. For an existing database, first verify that its schema exactly matches the legacy
-   baseline. Record the baseline migration as already applied in `__EFMigrationsHistory`
-   (without executing its table-creation operations), then apply only the incremental
-   Franz audit migration. Do not stamp the baseline on an unverified or drifted schema.
-5. Test both paths: fresh database creation and upgrade of a disposable copy containing
-   representative existing rows. Verify that existing business data is preserved, audit
-   fields receive valid Franz-compatible values, and ordinary deletes are soft deletes.
+3. Review the migration and model snapshot. This initial migration is expected to create
+   the full schema; verify it contains only the intended final model and no accidental
+   schema artifacts. Do not hand-author generated migration code.
+4. Create a fresh, empty development database and apply the migration. Verify startup,
+   seed/reference data, CRUD workflows, auditing, soft deletion, concurrency, and the
+   exceptional permanent project-delete path.
+5. Remove or reset the old POC database only in the local/development environment after
+   confirming it contains no data that must be retained. Do not drop shared or production
+   databases as part of application startup.
+6. Keep schema changes explicit and reviewable. Production schema creation or updates
+   must be a deployment operation, not an implicit destructive startup action.
 
-The existing startup initializer is development-only. Keep production schema changes out
-of application startup: generate and inspect the SQL script, test it on a disposable SQL
-Server database, and treat production application as a separate deployment operation.
+Until the final entity model and mappings are stable, do not generate the initial migration:
+otherwise the migration and snapshot will immediately become stale as the refactor continues.
 
 ## Verification
 
@@ -121,7 +104,7 @@ Model tests should enforce `IEntity<Guid>` inheritance, Franz audit properties a
 filters, generic repository registration, generated Guid identities, concurrency tokens,
 restricted foreign keys, decimal precision, and project ownership.
 
-Provider integration tests must use SQL Server for migration upgrade, concurrent updates,
+Provider integration tests must use SQL Server for fresh database creation, concurrent updates,
 audit actor/timestamps, soft-delete filtering, permanent project deletion with dependent
 rows, failure rollback, and transaction retry behavior. SQLite tests remain useful for
 fast domain persistence checks but do not prove SQL Server DDL or locking behavior.
