@@ -4,7 +4,11 @@ using Franz.Common.Mediator.Handlers;
 using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
+using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Brouillons;
+using PilotageForfaits.Application.Calcul;
+using PilotageForfaits.Application.Commun;
+using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Import;
 using PilotageForfaits.Contracts.Import;
 using PilotageForfaits.Contracts.Exports;
@@ -56,6 +60,16 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Api_must_not_reference_database_provider_or_ef_core_runtime()
+    {
+        var references = ApiAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
+
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
+        Assert.DoesNotContain("Microsoft.Data.SqlClient", references);
+    }
+
+    [Fact]
     public void Api_must_reference_application_directly()
     {
         var references = ApiAssembly.GetReferencedAssemblies()
@@ -79,6 +93,94 @@ public sealed class LayerDependencyTests
         AssertNoProjectReferences(ApplicationAssembly,
             "PilotageForfaits.Infrastructure",
             "PilotageForfaits.Api");
+    }
+
+    [Fact]
+    public void Extracted_application_workflows_must_not_depend_on_the_legacy_context()
+    {
+        var workflows = new[]
+        {
+            typeof(ConstructeurProjetCalcul),
+            typeof(UniciteProjet),
+            typeof(ServiceAcces),
+            typeof(ServiceJournal),
+            typeof(ProjetsService),
+            typeof(BrouillonsService),
+            typeof(SuiviService),
+            typeof(ImportTspService),
+            typeof(ExportsService)
+        };
+
+        foreach (var workflow in workflows)
+        {
+            var constructor = Assert.Single(workflow.GetConstructors());
+            Assert.DoesNotContain(
+                constructor.GetParameters(),
+                parameter => parameter.ParameterType == typeof(IContexteDonnees));
+        }
+    }
+
+    [Fact]
+    public void Workshop_and_deliverable_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(AteliersLivrablesService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IAteliersLivrablesPersistence));
+    }
+
+    [Fact]
+    public void Expense_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(DepensesService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IDepensesPersistence));
+    }
+
+    [Fact]
+    public void Invoicing_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(FacturationService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IFacturationPersistence));
+    }
+
+    [Fact]
+    public void Weekly_tracking_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(PointsHebdoService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IPointsHebdoPersistence));
+    }
+
+    [Fact]
+    public void Planning_reference_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(ReferencesService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IReferencesPersistence));
+    }
+
+    [Fact]
+    public void Register_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(RegistresService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IRegistresPersistence));
+    }
+
+    [Fact]
+    public void Project_settings_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(ParametresService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IParametresPersistence));
     }
 
     [Fact]

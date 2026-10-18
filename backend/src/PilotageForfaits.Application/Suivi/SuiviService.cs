@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Securite;
@@ -14,7 +13,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// Écran de suivi d'un projet : les saisies (forme du POC), les indicateurs recalculés et les droits de l'utilisateur.
 /// Les montants sont retirés côté serveur pour les rôles qui ne doivent pas les voir.
 /// </summary>
-public sealed class SuiviService(IContexteDonnees db, ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge)
+public sealed class SuiviService(ISuiviPersistence persistence, ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge)
 {
     /// <summary>Mêmes réglages que l'API (noms en camelCase, listes de valeurs en texte).</summary>
     public static readonly JsonSerializerOptions OptionsJson = CreerOptions();
@@ -45,17 +44,16 @@ public sealed class SuiviService(IContexteDonnees db, ServiceAcces acces, Constr
         var donnees = await constructeur.ChargerDonneesAsync(projetId, annulation);
         var calcul = ConstructeurProjetCalcul.Construire(donnees);
         var modele = MoteurCalcul.Calculer(calcul, horloge.Aujourdhui);
-        var journal = await db.Journal.AsNoTracking().Where(j => j.ProjetId == projetId)
-            .OrderByDescending(j => j.Le).Take(TailleJournal).ToListAsync(annulation);
-        var ids = journal.Where(j => j.UtilisateurId is not null).Select(j => j.UtilisateurId!.Value).Distinct().ToList();
-        var noms = await db.Utilisateurs.AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NomComplet, annulation);
+        var donneesJournal = await persistence.ChargerJournalAsync(projetId, TailleJournal, annulation);
+        var journal = donneesJournal.Entrees;
+        var noms = donneesJournal.NomsUtilisateurs;
         var utilisateur = await acces.UtilisateurAsync(annulation);
         // projet archivé : lecture seule pour tous (il faut le restaurer pour le modifier)
         var archive = donnees.Projet.Statut == StatutProjet.Archive;
 
-        var pointsHebdo = await db.PointsHebdo.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var auteursPh = pointsHebdo.Where(x => x.ParId is not null).Select(x => x.ParId!.Value).Distinct().ToList();
-        var nomsPh = await db.Utilisateurs.AsNoTracking().Where(u => auteursPh.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NomComplet, annulation);
+        var donneesPointsHebdo = await persistence.ChargerPointsHebdoAsync(projetId, annulation);
+        var pointsHebdo = donneesPointsHebdo.Points;
+        var nomsPh = donneesPointsHebdo.NomsUtilisateurs;
         var suivi = new SuiviDto
         {
             Projet = ConstructeurVueSuivi.Construire(donnees, calcul, journal, noms, await ComplementsAsync(projetId, donnees.Taches, annulation),
@@ -83,11 +81,11 @@ public sealed class SuiviService(IContexteDonnees db, ServiceAcces acces, Constr
     private async Task<ComplementsVue> ComplementsAsync(Guid projetId, IReadOnlyList<Tache> taches, CancellationToken annulation)
     {
         var repere = taches.ToDictionary(t => t.Id, t => t.Repere);
-        var plans = await db.PlansReference.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var lignes = await db.LignesPlanReference.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var messages = await db.MisesAJour.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var ids = plans.Select(p => p.FigeParId).Concat(messages.Select(m => m.AuteurId)).Where(x => x is not null).Select(x => x!.Value).Distinct().ToList();
-        var noms = await db.Utilisateurs.AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NomComplet, annulation);
+        var donnees = await persistence.ChargerComplementsAsync(projetId, annulation);
+        var plans = donnees.Plans;
+        var lignes = donnees.Lignes;
+        var messages = donnees.MisesAJour;
+        var noms = donnees.NomsUtilisateurs;
         string? Nom(Guid? id) => id is { } v && noms.TryGetValue(v, out var n) ? n : null;
         var lignesParPlan = lignes.ToLookup(l => l.PlanReferenceId);
 

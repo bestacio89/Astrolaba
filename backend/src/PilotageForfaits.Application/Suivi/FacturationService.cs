@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -10,7 +9,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// Règles du POC : une date de facture ou de paiement n'est jamais dans le futur ; le paiement suit la facture ;
 /// le montant est figé à la facturation ; une phase n'est liée qu'à une seule échéance et s'impose à toutes ses tâches.
 /// </summary>
-public sealed class FacturationService(SaisieOutils o)
+public sealed class FacturationService(SaisieOutils o, IFacturationPersistence persistence)
 {
     public async Task<ResultatSaisieDto> DefinirDateAsync(Guid projetId, int numero, EcheanceDateCommande c, CancellationToken a)
     {
@@ -60,13 +59,13 @@ public sealed class FacturationService(SaisieOutils o)
         var selection = (c.Phases ?? new List<string>()).Select(SaisieOutils.Nettoyer).Where(x => x.Length > 0).Distinct().ToList();
         var tachesCochees = (c.Taches ?? new List<string>()).ToHashSet();
 
-        var phases = await o.Db.Phases.Where(x => x.ProjetId == projetId).ToListAsync(a);
-        var liens = await o.Db.LiensEcheancePhase.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var phases = (await persistence.ChargerPhasesAsync(projetId, a)).ToList();
+        var liens = (await persistence.ChargerLiensAsync(projetId, a)).ToList();
         // liens de cette échéance qui ne sont plus voulus
         foreach (var lien in liens.Where(l => l.EcheanceId == e.Id))
         {
             var code = phases.FirstOrDefault(p => p.Id == lien.PhaseId)?.Code;
-            if (code is null || !selection.Contains(code)) o.Db.LiensEcheancePhase.Remove(lien);
+            if (code is null || !selection.Contains(code)) persistence.SupprimerLien(lien);
         }
         foreach (var code in selection)
         {
@@ -74,15 +73,15 @@ public sealed class FacturationService(SaisieOutils o)
             if (phase is null)
             {
                 phase = new Phase { ProjetId = projetId, Code = code, Ordre = phases.Count == 0 ? 0 : phases.Max(p => p.Ordre) + 1, ListeReference = false };
-                o.Db.Phases.Add(phase);
+                persistence.AjouterPhase(phase);
                 phases.Add(phase);
             }
             var lien = liens.FirstOrDefault(l => l.PhaseId == phase.Id);
-            if (lien is null) o.Db.LiensEcheancePhase.Add(new LienEcheancePhase { ProjetId = projetId, EcheanceId = e.Id, PhaseId = phase.Id });
+            if (lien is null) persistence.AjouterLien(new LienEcheancePhase { ProjetId = projetId, EcheanceId = e.Id, PhaseId = phase.Id });
             else lien.EcheanceId = e.Id; // la phase quitte son ancienne échéance
         }
 
-        var taches = await o.Db.Taches.Where(t => t.ProjetId == projetId && !t.EstSection).ToListAsync(a);
+        var taches = (await persistence.ChargerTachesAsync(projetId, a)).ToList();
         foreach (var t in taches)
         {
             if (selection.Contains(PhaseDe(t, phases))) { t.EcheanceId = null; continue; } // suit la phase
@@ -108,17 +107,17 @@ public sealed class FacturationService(SaisieOutils o)
     public async Task<ResultatSaisieDto> DefinirEcheancePhaseAsync(Guid projetId, string code, EcheancePhaseCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var phases = await o.Db.Phases.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var phases = (await persistence.ChargerPhasesAsync(projetId, a)).ToList();
         var phase = phases.FirstOrDefault(p => p.Code == code);
-        var liens = await o.Db.LiensEcheancePhase.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var liens = (await persistence.ChargerLiensAsync(projetId, a)).ToList();
         var lien = phase is null ? null : liens.FirstOrDefault(l => l.PhaseId == phase.Id);
-        var taches = await o.Db.Taches.Where(t => t.ProjetId == projetId && !t.EstSection).ToListAsync(a);
+        var taches = (await persistence.ChargerTachesAsync(projetId, a)).ToList();
         var tachesPhase = taches.Where(t => PhaseDe(t, phases) == code).ToList();
         if (tachesPhase.Count == 0) throw new IntrouvableException("Phase introuvable.");
         string message;
         if (c.Numero is null)
         {
-            if (lien is not null) o.Db.LiensEcheancePhase.Remove(lien);
+            if (lien is not null) persistence.SupprimerLien(lien);
             message = $"Phase {code} : échéance retirée. Les tâches peuvent à nouveau avoir leur propre échéance.";
         }
         else
@@ -127,9 +126,9 @@ public sealed class FacturationService(SaisieOutils o)
             if (phase is null)
             {
                 phase = new Phase { ProjetId = projetId, Code = code, Ordre = phases.Count == 0 ? 0 : phases.Max(p => p.Ordre) + 1, ListeReference = false };
-                o.Db.Phases.Add(phase);
+                persistence.AjouterPhase(phase);
             }
-            if (lien is null) o.Db.LiensEcheancePhase.Add(new LienEcheancePhase { ProjetId = projetId, EcheanceId = e.Id, PhaseId = phase.Id });
+            if (lien is null) persistence.AjouterLien(new LienEcheancePhase { ProjetId = projetId, EcheanceId = e.Id, PhaseId = phase.Id });
             else lien.EcheanceId = e.Id;
             foreach (var t in tachesPhase) t.EcheanceId = null;
             message = $"Phase {code} liée à l’échéance n° {e.Numero} ({tachesPhase.Count} tâches).";
@@ -139,7 +138,7 @@ public sealed class FacturationService(SaisieOutils o)
     }
 
     private async Task<Echeance> EcheanceAsync(Guid projetId, int numero, CancellationToken a) =>
-        await o.Db.Echeances.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Numero == numero, a)
+        await persistence.ChargerEcheanceAsync(projetId, numero, a)
         ?? throw new IntrouvableException("Échéance introuvable.");
 
     /// <summary>Phase d'une tâche : celle choisie en cours de projet, sinon celle du TSP.</summary>

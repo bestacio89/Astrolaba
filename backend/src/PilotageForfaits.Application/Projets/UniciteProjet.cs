@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Securite;
 using PilotageForfaits.Domain.Commun;
@@ -12,13 +11,13 @@ namespace PilotageForfaits.Application.Projets;
 /// un projet terminé se restaure, il ne se réimporte pas. Seul un projet supprimé (créé par erreur) libère son identité.
 /// L'index unique de la base garantit la règle même si deux imports arrivent en même temps.
 /// </summary>
-public sealed class UniciteProjet(IContexteDonnees db, ServiceAcces acces)
+public sealed class UniciteProjet(IRechercheIdentiteProjet recherche, ServiceAcces acces)
 {
     /// <summary>Projet existant de même identité (autre que « sauf »), ou null.</summary>
     public async Task<ProjetExistantDto?> ChercherAsync(string? reference, string? client, string? nom, Guid? sauf, CancellationToken annulation = default)
     {
         var cle = IdentiteProjet.Cle(reference, client, nom);
-        var existant = await db.Projets.AsNoTracking().FirstOrDefaultAsync(p => p.CleUnicite == cle && (sauf == null || p.Id != sauf), annulation);
+        var existant = await recherche.ChercherParCleAsync(cle, sauf, annulation);
         if (existant is null) return null;
 
         var visible = await acces.RoleSurProjetAsync(existant.Id, annulation) is not null;

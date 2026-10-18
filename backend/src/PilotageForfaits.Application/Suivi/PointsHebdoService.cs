@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -14,7 +13,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// le serveur garde seulement ce que le chef de projet complète (actualités, points d'attention, indicateurs, météo),
 /// période par période, et les réglages communs (équipe, mode de facturation, logos).
 /// </summary>
-public sealed class PointsHebdoService(SaisieOutils o)
+public sealed class PointsHebdoService(SaisieOutils o, IPointsHebdoPersistence persistence)
 {
     public const string CleReglages = "reglages";
     public static readonly IReadOnlySet<string> Indicateurs = new HashSet<string> { "planning", "qualite", "perimetre", "budget", "ressources", "facturation" };
@@ -124,11 +123,11 @@ public sealed class PointsHebdoService(SaisieOutils o)
 
     private async Task<PointHebdo> LigneAsync(Guid projetId, string cle, CancellationToken a)
     {
-        var ligne = await o.Db.PointsHebdo.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Cle == cle, a);
+        var ligne = await persistence.ChargerAsync(projetId, cle, a);
         if (ligne is null)
         {
             ligne = new PointHebdo { ProjetId = projetId, Cle = cle };
-            o.Db.PointsHebdo.Add(ligne);
+            persistence.Ajouter(ligne);
         }
         return ligne;
     }

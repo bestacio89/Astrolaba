@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -9,7 +8,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// Organisation des ateliers (date convenue avec le client, horaire, invitation, destinataires)
 /// et validation client des livrables. Règles du POC (setAtelier, setLivrable).
 /// </summary>
-public sealed class AteliersLivrablesService(SaisieOutils o)
+public sealed class AteliersLivrablesService(SaisieOutils o, IAteliersLivrablesPersistence persistence)
 {
     /// <summary>
     /// Date planifiée de l'atelier. Elle alimente les dates prévues de la tâche quand elles sont vides ou qu'elles suivaient déjà l'atelier.
@@ -78,14 +77,14 @@ public sealed class AteliersLivrablesService(SaisieOutils o)
             var v = SaisieOutils.Nettoyer(x);
             if (v.Length > 0 && !liste.Any(y => string.Equals(y, v, StringComparison.OrdinalIgnoreCase))) liste.Add(v.Length > 400 ? v[..400] : v);
         }
-        o.Db.Destinataires.RemoveRange(at.Destinataires);
-        at.Destinataires.Clear();
-        for (var i = 0; i < liste.Count; i++)
+        var destinataires = liste.Select((nom, ordre) => new Destinataire
         {
-            var d = new Destinataire { ProjetId = projetId, AtelierId = at.Id, NomOuEmail = liste[i], Ordre = i };
-            at.Destinataires.Add(d);
-            o.Db.Destinataires.Add(d);
-        }
+            ProjetId = projetId,
+            AtelierId = at.Id,
+            NomOuEmail = nom,
+            Ordre = ordre,
+        }).ToArray();
+        persistence.RemplacerDestinataires(at, destinataires);
         Nettoyer(at);
         o.Noter(projetId, u, "Atelier", t.Id, $"{SaisiesTachesService.Libelle(t)} · destinataires", null, string.Join("; ", liste));
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
@@ -102,17 +101,17 @@ public sealed class AteliersLivrablesService(SaisieOutils o)
             if (calcule.RealiseLe is null)
                 throw new RegleMetierException("Le livrable n’est pas encore livré : il l’est quand la tâche est validée. La validation client vient ensuite.");
         }
-        var livrable = await o.Db.Livrables.FirstOrDefaultAsync(l => l.TacheId == t.Id, a);
+        var livrable = await persistence.ChargerLivrableAsync(t.Id, a);
         var ancienne = livrable?.ValideParClientLe;
         if (livrable is null && c.ValideLe is not null)
         {
             livrable = new Livrable { ProjetId = projetId, TacheId = t.Id };
-            o.Db.Livrables.Add(livrable);
+            persistence.AjouterLivrable(livrable);
         }
         if (livrable is not null)
         {
             livrable.ValideParClientLe = c.ValideLe;
-            if (livrable.ValideParClientLe is null && string.IsNullOrEmpty(livrable.LienStockage)) o.Db.Livrables.Remove(livrable);
+            if (livrable.ValideParClientLe is null && string.IsNullOrEmpty(livrable.LienStockage)) persistence.SupprimerLivrable(livrable);
         }
         o.Noter(projetId, u, "Livrable", t.Id, $"{SaisiesTachesService.Libelle(t)} · validé client le", ancienne, c.ValideLe);
         var message = c.ValideLe is null
@@ -133,17 +132,17 @@ public sealed class AteliersLivrablesService(SaisieOutils o)
         if (lien.Length > 0 && !LienAccepte(lien))
             throw new RegleMetierException("Lien non reconnu : indiquez une adresse qui commence par https:// (SharePoint, Teams…) ou un chemin réseau \\\\serveur\\dossier.");
         if (lien.Length > 1000) throw new RegleMetierException("Lien trop long : 1000 caractères au maximum.");
-        var livrable = await o.Db.Livrables.FirstOrDefaultAsync(l => l.TacheId == t.Id, a);
+        var livrable = await persistence.ChargerLivrableAsync(t.Id, a);
         var ancienne = livrable?.LienStockage;
         if (livrable is null && lien.Length > 0)
         {
             livrable = new Livrable { ProjetId = projetId, TacheId = t.Id };
-            o.Db.Livrables.Add(livrable);
+            persistence.AjouterLivrable(livrable);
         }
         if (livrable is not null)
         {
             livrable.LienStockage = lien.Length > 0 ? lien : null;
-            if (livrable.ValideParClientLe is null && livrable.LienStockage is null) o.Db.Livrables.Remove(livrable);
+            if (livrable.ValideParClientLe is null && livrable.LienStockage is null) persistence.SupprimerLivrable(livrable);
         }
         o.Noter(projetId, u, "Livrable", t.Id, $"{SaisiesTachesService.Libelle(t)} · document", ancienne, lien.Length > 0 ? lien : null);
         var message = lien.Length > 0 ? "Lien du document enregistré." : "Lien du document retiré.";
@@ -162,16 +161,16 @@ public sealed class AteliersLivrablesService(SaisieOutils o)
     /// <summary>Organisation de l'atelier de la tâche (créée au besoin), avec ses destinataires.</summary>
     private async Task<Atelier> AtelierAsync(Guid projetId, Tache t, CancellationToken a)
     {
-        var at = await o.Db.Ateliers.Include(x => x.Destinataires).FirstOrDefaultAsync(x => x.TacheId == t.Id, a);
+        var at = await persistence.ChargerAtelierAsync(t.Id, a);
         if (at is not null) return at;
         at = new Atelier { ProjetId = projetId, TacheId = t.Id };
-        o.Db.Ateliers.Add(at);
+        persistence.AjouterAtelier(at);
         return at;
     }
 
     /// <summary>Plus rien n'est renseigné : l'organisation de l'atelier est supprimée.</summary>
     private void Nettoyer(Atelier at)
     {
-        if (at.EstVide) o.Db.Ateliers.Remove(at); // (un atelier jamais enregistré est simplement oublié)
+        if (at.EstVide) persistence.SupprimerAtelier(at); // (un atelier jamais enregistré est simplement oublié)
     }
 }

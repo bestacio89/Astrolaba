@@ -1,6 +1,4 @@
 using System.Globalization;
-using Microsoft.EntityFrameworkCore;
-using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Domain.Calcul;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -11,61 +9,15 @@ namespace PilotageForfaits.Application.Calcul;
 /// Charge les saisies d'un projet depuis la base et les met dans la forme attendue par le moteur de calcul.
 /// C'est le seul endroit qui fait le lien entre le modèle de données et le moteur.
 /// </summary>
-public sealed class ConstructeurProjetCalcul(IContexteDonnees db)
+public sealed class ConstructeurProjetCalcul(IChargeurDonneesProjet chargeur)
 {
-    /// <summary>Charge les saisies du projet et les met dans la forme attendue par le moteur de calcul.</summary>
+    /// <summary>Charge les saisies d'un projet depuis la persistance puis les transforme pour le moteur de calcul.</summary>
     public async Task<ProjetCalcul> ChargerAsync(Guid projetId, CancellationToken annulation = default) =>
         Construire(await ChargerDonneesAsync(projetId, annulation));
 
-    /// <summary>Charge toutes les saisies d'un projet (lecture seule). Sert au moteur, à l'écran de suivi et aux exports.</summary>
-    public async Task<DonneesProjet> ChargerDonneesAsync(Guid projetId, CancellationToken annulation = default)
-    {
-        var projet = await db.Projets.AsNoTracking().FirstAsync(p => p.Id == projetId, annulation);
-        // Une requête par table : plus simple à lire et plus efficace qu'une seule requête avec toutes les jointures.
-        var profils = await db.Profils.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Rang).ToListAsync(annulation);
-        var taches = await db.Taches.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Position).ToListAsync(annulation);
-        var charges = await db.ChargesTache.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var consommes = await db.Consommes.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var evolutions = await db.Evolutions.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var axes = await db.Axes.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var phases = await db.Phases.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var etapes = await db.Etapes.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var types = await db.TypesTache.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var valeursIa = await db.ValeursIa.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var echeances = await db.Echeances.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Numero).ToListAsync(annulation);
-        var liensPhases = await db.LiensEcheancePhase.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var planning = await db.PlanningsProfils.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var planningPhases = await db.PlanningsPhases.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var planningPhasesMois = await db.PlanningsPhasesMois.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var budgetAchats = await db.BudgetsAchats.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var budgetFrais = await db.BudgetsFrais.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var prestataires = await db.Prestataires.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var metriques = await db.Metriques.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var achatsReels = await db.AchatsReels.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var fraisReels = await db.FraisReels.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var actions = await db.Actions.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var decisions = await db.Decisions.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var risques = await db.Risques.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var ateliers = await db.Ateliers.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var destinataires = await db.Destinataires.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var livrables = await db.Livrables.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var photos = await db.PhotosIndicateurs.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var imports = await db.ImportsTsp.AsNoTracking().Where(x => x.ProjetId == projetId).ToListAsync(annulation);
-        var champs = await db.ChampsFiche.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var grille = await db.Grilles.AsNoTracking().Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).ToListAsync(annulation);
-        var idsAuteurs = evolutions.Select(e => e.ParId).Concat(charges.Select(c => c.AjouteeParId)).Concat(profils.Select(p => p.AjouteParId))
-            .Concat(actions.Select(a => a.CreeeParId)).Concat(decisions.Select(x => x.CreeeParId)).Concat(risques.Select(r => r.CreeParId))
-            .Concat(achatsReels.Select(a => a.CreeParId)).Concat(fraisReels.Select(f => f.CreeParId))
-            .Where(x => x is not null).Select(x => x!.Value).Distinct().ToList();
-        var auteurs = await db.Utilisateurs.AsNoTracking().Where(u => idsAuteurs.Contains(u.Id)).ToDictionaryAsync(u => u.Id, annulation);
-
-        // Tri en mémoire des dates avec fuseau horaire (certaines bases, comme SQLite des tests, ne savent pas les trier).
-        return new DonneesProjet(projet, profils, taches, charges, consommes, evolutions, axes, phases, etapes, types, valeursIa,
-            echeances, liensPhases, planning, planningPhases, planningPhasesMois, budgetAchats, budgetFrais, prestataires, metriques,
-            achatsReels, fraisReels, actions, decisions, risques, auteurs,
-            ateliers, destinataires, livrables, photos.OrderBy(x => x.Date).ThenBy(x => x.Nature).ToList(),
-            imports.OrderBy(x => x.ImporteLe).ToList(), champs, grille);
-    }
+    /// <summary>Charge toutes les saisies du projet. L'accès à la base est délégué à Infrastructure.</summary>
+    public Task<DonneesProjet> ChargerDonneesAsync(Guid projetId, CancellationToken annulation = default) =>
+        chargeur.ChargerDonneesAsync(projetId, annulation);
 
     /// <summary>
     /// Saisies d'un projet créé en mémoire et pas encore enregistré (ex. le projet que donnera le lancement d'un brouillon) :

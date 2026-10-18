@@ -1,13 +1,17 @@
+using Franz.Common.Business.Domain;
+
 namespace PilotageForfaits.Domain.Entites;
 
 /// <summary>
-/// Base de tous les objets enregistrés : un identifiant technique (jamais une position ou un numéro de ligne)
-/// et un numéro de version. Si deux personnes modifient le même objet en même temps, la seconde est prévenue
-/// au lieu d'écraser la première (le numéro de version ne correspond plus).
+/// Astrolaba's persisted entity base, built on Franz's audited IEntity<Guid> contract.
+/// IDs remain generated when an entity is created; EF can materialize the private-set ID
+/// through the mapped inherited property. Version remains Astrolaba's optimistic concurrency token.
 /// </summary>
-public abstract class Entite
+public abstract class Entite : Entity<Guid>
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
+    protected Entite() : base(Guid.NewGuid())
+    {
+    }
 
     /// <summary>Numéro de version, augmenté automatiquement à chaque enregistrement d'une modification.</summary>
     public int Version { get; set; }

@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -10,7 +9,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// puis le Gantt compare le planning actuel à cette référence. Chaque dérive peut recevoir une cause et un motif.
 /// Une référence ne se modifie pas (seuls la cause et le motif de chaque écart se renseignent) et ne se supprime pas.
 /// </summary>
-public sealed class ReferencesService(SaisieOutils o)
+public sealed class ReferencesService(SaisieOutils o, IReferencesPersistence persistence)
 {
     /// <summary>Nombre maximal de références par projet (au-delà, la comparaison n'a plus de sens à l'écran).</summary>
     public const int Maximum = 20;
@@ -19,10 +18,10 @@ public sealed class ReferencesService(SaisieOutils o)
     public async Task<ResultatSaisieDto> FigerAsync(Guid projetId, FigerReferenceCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var nombre = await o.Db.PlansReference.CountAsync(x => x.ProjetId == projetId, a);
+        var nombre = await persistence.CompterAsync(projetId, a);
         if (nombre >= Maximum) throw new RegleMetierException($"Ce projet a déjà {Maximum} références : c’est le maximum.");
         var calcul = await o.CalculerAsync(projetId, a);
-        var taches = await o.Db.Taches.AsNoTracking().Where(t => t.ProjetId == projetId && !t.EstSection).ToListAsync(a);
+        var taches = (await persistence.ChargerTachesAsync(projetId, a)).ToList();
         var parRepere = taches.ToDictionary(t => t.Repere);
         var libelle = SaisieOutils.Nettoyer(c.Libelle);
         if (libelle.Length == 0) libelle = nombre == 0 ? "Référence initiale" : $"Référence {nombre + 1}";
@@ -38,7 +37,7 @@ public sealed class ReferencesService(SaisieOutils o)
                 DebutPrevu = tache.DebutPrevu, FinPrevue = tache.FinPrevue, ChargePrevue = t.Charge,
             });
         }
-        o.Db.PlansReference.Add(plan);
+        persistence.AjouterPlan(plan);
         o.Noter(projetId, u, "Planning", plan.Id, "référence figée", null, libelle);
         var datees = plan.Lignes.Count(l => l.FinPrevue is not null);
         var message = datees == 0
@@ -52,7 +51,7 @@ public sealed class ReferencesService(SaisieOutils o)
     {
         var u = await o.ExigerChefAsync(projetId, a);
         var t = await o.TacheAsync(projetId, uid, a);
-        var ligne = await o.Db.LignesPlanReference.FirstOrDefaultAsync(l => l.ProjetId == projetId && l.PlanReferenceId == referenceId && l.TacheId == t.Id, a)
+        var ligne = await persistence.ChargerLigneAsync(projetId, referenceId, t.Id, a)
             ?? throw new IntrouvableException("Cette tâche ne figure pas dans la référence (elle a été ajoutée ou annulée après).");
         SaisieOutils.VerifierVersion(ligne, c.Version, "L’écart de cette tâche");
         var cause = SaisieOutils.Nettoyer(c.Cause);

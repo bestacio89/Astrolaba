@@ -14,7 +14,7 @@ namespace PilotageForfaits.Application.Import;
 /// puis enregistre le vendu dans la base. Le vendu n'est plus jamais modifié ensuite.
 /// </summary>
 public sealed class ImportTspService(
-    IContexteDonnees db, ServiceAcces acces, ILecteurTsp lecteur, IHorloge horloge, ServiceJournal journal, UniciteProjet unicite)
+    IProjetsPersistence projetsPersistence, ServiceAcces acces, ILecteurTsp lecteur, IHorloge horloge, ServiceJournal journal, UniciteProjet unicite)
 {
     /// <summary>Lit le fichier et décrit ce qui sera repris, sans rien enregistrer.</summary>
     public async Task<ApercuImportDto> AnalyserAsync(Stream fichier, string nomFichier, CancellationToken annulation = default)
@@ -41,9 +41,8 @@ public sealed class ImportTspService(
         {
             ProjetId = projet.Id, UtilisateurId = utilisateur.Id, Role = RoleProjet.ChefDeProjet, Depuis = horloge.Maintenant, AccordeeParId = utilisateur.Id,
         });
-        db.Projets.Add(projet);
+        projetsPersistence.Ajouter(projet);
         journal.Noter(projet.Id, utilisateur.Id, "Projet", projet.Id, "Import TSP", null, nomFichier);
-        await db.SaveChangesAsync(annulation);
         return projet.Id;
     }
 

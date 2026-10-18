@@ -1,8 +1,10 @@
 using System.Reflection;
 using Franz.Common.EntityFramework;
+using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
+using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
 
@@ -14,8 +16,10 @@ namespace PilotageForfaits.Infrastructure.Donnees;
 /// </summary>
 public sealed class PilotageDbContext(
     DbContextOptions<PilotageDbContext> options,
-    IDispatcher dispatcher) : DbContextBase(options, dispatcher), IContexteDonnees
+    IDispatcher dispatcher,
+    ICurrentUserService? currentUser = null) : DbContextBase(options, dispatcher, currentUser), IContexteDonnees
 {
+    private Guid? _projetIdPourSuppressionDefinitive;
     public DbSet<Utilisateur> Utilisateurs => Set<Utilisateur>();
     public DbSet<Habilitation> Habilitations => Set<Habilitation>();
     public DbSet<EntreeJournal> Journal => Set<EntreeJournal>();
@@ -109,23 +113,93 @@ public sealed class PilotageDbContext(
     /// une table ajoutée plus tard est donc prise en compte sans rien changer ici. EF Core ordonne lui-même les suppressions
     /// (les objets qui dépendent d'un autre d'abord), ce qui respecte l'interdiction des suppressions en cascade.
     /// </summary>
-    public async Task MarquerProjetPourSuppressionAsync(Guid projetId, CancellationToken annulation = default)
+    public Task MarquerProjetPourSuppressionAsync(Guid projetId, CancellationToken annulation = default)
     {
-        var charger = typeof(PilotageDbContext).GetMethod(nameof(ChargerDuProjetAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var types = Model.GetEntityTypes()
-            .Where(t => !t.IsOwned() && typeof(EntiteDeProjet).IsAssignableFrom(t.ClrType))
-            .Select(t => t.ClrType).Distinct().ToList();
-        // tout est chargé d'abord, puis tout est marqué : le résultat ne dépend pas de l'ordre des tables
-        var aSupprimer = new List<object>();
-        foreach (var type in types)
-            aSupprimer.AddRange(await (Task<List<object>>)charger.MakeGenericMethod(type).Invoke(this, new object[] { projetId, annulation })!);
-        var projet = await Projets.FirstAsync(p => p.Id == projetId, annulation);
-        RemoveRange(aSupprimer);
-        Projets.Remove(projet);
+        if (_projetIdPourSuppressionDefinitive is not null)
+            throw new InvalidOperationException("Une suppression définitive de projet est déjà en attente.");
+
+        if (ChangeTracker.Entries().Any(entry =>
+                entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException(
+                "La suppression définitive d'un projet doit être la seule opération en attente dans l'unité de travail.");
+
+        _projetIdPourSuppressionDefinitive = projetId;
+        return Task.CompletedTask;
     }
 
-    private async Task<List<object>> ChargerDuProjetAsync<T>(Guid projetId, CancellationToken annulation) where T : EntiteDeProjet =>
-        (await Set<T>().Where(x => x.ProjetId == projetId).ToListAsync(annulation)).Cast<object>().ToList();
+    /// <summary>
+    /// Franz soft-deletes IEntity instances by default. Astrolaba has one explicit permanent-delete use case
+    /// (a project created by mistake), which must remain a physical delete to release its unique business identity.
+    /// </summary>
+    private async Task<int> SupprimerProjetDefinitivementAsync(Guid projetId, CancellationToken cancellationToken)
+    {
+        var strategy = Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+            var total = 0;
+            var types = Model.GetEntityTypes()
+                .Where(type => !type.IsOwned() && !type.ClrType.IsAbstract &&
+                    (typeof(EntiteDeProjet).IsAssignableFrom(type.ClrType) || type.ClrType == typeof(Projet)))
+                .ToHashSet();
+
+            foreach (var type in TrierPourSuppression(types))
+            {
+                if (type.ClrType == typeof(Projet))
+                {
+                    var deletedProject = await Projets.IgnoreQueryFilters()
+                        .Where(project => project.Id == projetId)
+                        .ExecuteDeleteAsync(cancellationToken);
+                    if (deletedProject != 1)
+                        throw new DbUpdateConcurrencyException(
+                            $"Le projet {projetId} n'existe plus au moment de sa suppression définitive.");
+                    total += deletedProject;
+                    continue;
+                }
+
+                var delete = typeof(PilotageDbContext)
+                    .GetMethod(nameof(SupprimerEntitesDuProjetAsync), BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .MakeGenericMethod(type.ClrType);
+                var task = (Task<int>)delete.Invoke(this, new object[] { projetId, cancellationToken })!;
+                total += await task;
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return total;
+        });
+    }
+
+    private static IReadOnlyList<Microsoft.EntityFrameworkCore.Metadata.IEntityType> TrierPourSuppression(
+        HashSet<Microsoft.EntityFrameworkCore.Metadata.IEntityType> entityTypes)
+    {
+        var remaining = entityTypes.ToHashSet();
+        var ordered = new List<Microsoft.EntityFrameworkCore.Metadata.IEntityType>(remaining.Count);
+
+        // Delete dependents before principals to respect Astrolaba's Restrict foreign keys.
+        while (remaining.Count > 0)
+        {
+            var leaves = remaining.Where(candidate => !remaining.Any(dependent =>
+                dependent != candidate &&
+                dependent.GetForeignKeys().Any(foreignKey =>
+                    foreignKey.PrincipalEntityType == candidate))).ToArray();
+
+            if (leaves.Length == 0)
+                throw new InvalidOperationException(
+                    "Impossible d'ordonner la suppression définitive : le graphe des clés étrangères contient un cycle.");
+
+            ordered.AddRange(leaves);
+            remaining.ExceptWith(leaves);
+        }
+
+        return ordered;
+    }
+
+    private Task<int> SupprimerEntitesDuProjetAsync<T>(
+        Guid projetId,
+        CancellationToken cancellationToken) where T : EntiteDeProjet =>
+        Set<T>().IgnoreQueryFilters()
+            .Where(entity => entity.ProjetId == projetId)
+            .ExecuteDeleteAsync(cancellationToken);
 
     /// <summary>
     /// Développement sans migration : compare les tables et colonnes du modèle à celles de la base SQL Server
@@ -167,21 +241,46 @@ public sealed class PilotageDbContext(
     /// EF Core vérifie que la version en base est toujours celle lue ; sinon, quelqu'un d'autre a modifié l'objet entre-temps
     /// et l'enregistrement est refusé (DbUpdateConcurrencyException, transformée en réponse 409 par l'API).
     /// </summary>
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        VerifierLongueurs();
-        // les réglages du projet sont rangés dans la ligne du projet (type « possédé ») : les modifier change aussi sa version
-        foreach (var p in ChangeTracker.Entries<Projet>())
+        try
         {
-            if (p.State == EntityState.Unchanged && p.Reference(x => x.Parametres).TargetEntry?.State == EntityState.Modified)
-                p.Property(x => x.Version).IsModified = true;
+            if (_projetIdPourSuppressionDefinitive is { } projetId)
+            {
+                var deletedRows = await SupprimerProjetDefinitivementAsync(projetId, cancellationToken);
+                _projetIdPourSuppressionDefinitive = null;
+                return deletedRows;
+            }
+
+            VerifierLongueurs();
+            // Les réglages possédés vivent dans la ligne projet : leur modification doit incrémenter la version du projet.
+            foreach (var p in ChangeTracker.Entries<Projet>())
+            {
+                if (p.State == EntityState.Unchanged && p.Reference(x => x.Parametres).TargetEntry?.State == EntityState.Modified)
+                    p.Property(x => x.Version).IsModified = true;
+            }
+            foreach (var e in ChangeTracker.Entries<Entite>())
+            {
+                if (e.State == EntityState.Added)
+                    e.Entity.Version = 1;
+                else if (e.State is EntityState.Modified or EntityState.Deleted)
+                    e.Entity.Version = e.OriginalValues.GetValue<int>(nameof(Entite.Version)) + 1;
+            }
+
+            // DbContextBase applies Franz auditing and converts ordinary deletes to soft deletes.
+            return await base.SaveChangesAsync(cancellationToken);
+        
         }
-        foreach (var e in ChangeTracker.Entries<Entite>())
+        catch (DbUpdateConcurrencyException)
         {
-            if (e.State == EntityState.Added) e.Entity.Version = 1;
-            else if (e.State == EntityState.Modified) e.Entity.Version = e.OriginalValues.GetValue<int>(nameof(Entite.Version)) + 1;
+            throw new ConflitException(
+                "Quelqu'un a modifié ces données pendant que vous les modifiiez. Rechargez la page puis refaites votre modification.");
         }
-        return base.SaveChangesAsync(cancellationToken);
+        catch (DbUpdateException)
+        {
+            throw new ConflitException(
+                "L'enregistrement n'a pas pu être fait car les données entrent en conflit avec un autre enregistrement. Rechargez la page puis refaites votre modification.");
+        }
     }
 
     /// <summary>

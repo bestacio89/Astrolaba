@@ -140,7 +140,7 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
 
         using (var scope = _api.Services.CreateScope())
         {
-            var constructeur = new ConstructeurProjetCalcul(scope.ServiceProvider.GetRequiredService<PilotageDbContext>());
+            var constructeur = scope.ServiceProvider.GetRequiredService<ConstructeurProjetCalcul>();
             var calcul = MoteurCalcul.Calculer(await constructeur.ChargerAsync(id), new DateOnly(2026, 10, 6));
             OutilsTests.VerifierIdentique(OutilsTests.Lire("scenario-a-tsp-importe.attendu.json"), OutilsTests.VersJson(calcul), "TSP importé puis relu en base");
         }
