@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ---------- Couches de l'application ----------
 builder.Services.AjouterApplication();
-builder.Services.AddFranzMediatorV2Default(null, typeof(ArchiverProjetCommandHandler).Assembly);
+builder.Services.AddFranzMediatorV2(null, typeof(ArchiverProjetCommandHandler).Assembly);
 builder.Services.AjouterInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();
