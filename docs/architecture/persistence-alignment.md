@@ -29,6 +29,13 @@ may invoke the development initializer as part of host startup, but it must not 
 `PilotageDbContext`, EF Core runtime APIs, or SQL Server provider exceptions. HTTP error
 mapping consumes application-level exceptions such as `ConflitException` only.
 
+The API host follows HeroService's operational bootstrap selectively: structured host logging,
+Franz mediator audit/logging pipelines, Franz audit registration, and configurable mediator
+resilience are wired at startup. Astrolaba retains its explicit Entra ID/development authentication,
+ProblemDetails exception mapping, and ASP.NET middleware order rather than layering
+`AddHttpArchitecture` over existing authentication and exception handling without an integration review.
+The Franz transaction pipeline remains intentionally disabled until command-level atomicity is proven.
+
 Astrolaba intentionally retains one exceptional physical-delete workflow for projects
 created by mistake. It must remain explicit, authorization-protected, transactionally
 atomic, dependency ordered, and tested against SQL Server. It must not become a second
