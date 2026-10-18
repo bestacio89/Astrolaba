@@ -31,6 +31,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <!-- Franz.Common -->
+    <PackageVersion Include="Franz.Common.Business" Version="2.3.0" />
     <PackageVersion Include="Franz.Common.Mediator" Version="2.3.0" />
     <PackageVersion Include="Franz.Common.EntityFramework" Version="2.3.0" />
     <!-- Corrections de sécurité de paquets utilisés indirectement (avis GitHub, octobre 2026) -->
