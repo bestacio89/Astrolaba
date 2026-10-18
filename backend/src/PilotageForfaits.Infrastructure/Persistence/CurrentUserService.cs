@@ -7,7 +7,7 @@ namespace PilotageForfaits.Infrastructure.Persistence;
 /// Supplies Franz persistence auditing with the stable identity from the authenticated Entra ID principal.
 /// The framework falls back to "system" when no authenticated principal is available.
 /// </summary>
-internal sealed class CurrentUserService(IUtilisateurCourant? utilisateurCourant = null) : ICurrentUserService
+internal sealed class AstrolabaCurrentUserService(IUtilisateurCourant? utilisateurCourant = null) : ICurrentUserService
 {
     public string? UserId =>
         utilisateurCourant?.EstAuthentifie == true &&
