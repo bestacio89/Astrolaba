@@ -128,6 +128,7 @@ internal sealed class SaisieDonneesPersistence(PilotageDbContext db) : ISaisieDo
         db.Profils.FirstOrDefaultAsync(p => p.Id == profilId, annulation);
 
     public void SupprimerEvolution(EvolutionPerimetre evolution) => db.Evolutions.Remove(evolution);
+    public void SupprimerEvolutions(IEnumerable<EvolutionPerimetre> evolutions) => db.Evolutions.RemoveRange(evolutions);
 
     public Task<Dictionary<Guid, string>> ListerCodesAxesAsync(Guid projetId, CancellationToken annulation) =>
         db.Axes.AsNoTracking().Where(x => x.ProjetId == projetId).ToDictionaryAsync(x => x.Id, x => x.Code, annulation);
