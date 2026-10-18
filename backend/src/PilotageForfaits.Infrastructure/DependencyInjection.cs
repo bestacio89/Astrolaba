@@ -9,6 +9,7 @@ using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Projets;
+using PilotageForfaits.Application.Suivi;
 using PilotageForfaits.Infrastructure.Donnees;
 using PilotageForfaits.Infrastructure.Excel;
 using PilotageForfaits.Infrastructure.Persistence;
