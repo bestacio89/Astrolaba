@@ -65,13 +65,32 @@ Do not restore or apply that generated migration as-is.
 
 Use a two-stage migration history:
 
-1. From the pre-Franz model on `develop`, generate and review an
-   `InitialSchemaBaseline` migration. It represents the legacy schema before the inherited
-   Franz audit and soft-delete fields were added. Bring its migration and snapshot files
-   onto the feature branch without regenerating it against the new model.
-2. On the feature branch, generate `AddFranzAuditColumns` against that legacy snapshot.
-   Review every operation, especially non-nullable audit columns on populated tables,
-   existing indexes/constraints, and the query-filter lifecycle.
+1. From the repository root, create a temporary worktree based on the pre-Franz `develop`
+   model so EF generates the baseline from the correct model, not the current feature model:
+
+   ```powershell
+   git worktree add -b migration/legacy-schema-baseline ..\Astrolaba-baseline develop
+   Set-Location ..\Astrolaba-baseline\backend
+   dotnet ef migrations add InitialSchemaBaseline --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
+   git add src/PilotageForfaits.Infrastructure/Migrations
+   git commit -m "[Feat][Persistence]: add legacy schema baseline"
+   ```
+
+   Cherry-pick that baseline commit onto `feat/franz-entity-repository-migration`, then
+   return to the feature worktree. The baseline migration and snapshot must remain those
+   generated from the pre-Franz model; do not regenerate them after switching to the
+   current model.
+2. On the feature branch, generate `AddFranzAuditColumns` against the legacy snapshot:
+
+   ```powershell
+   Set-Location E:\Source\Repos\Astrolaba\backend
+   dotnet ef migrations add AddFranzAuditColumns --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
+   ```
+
+   Review every operation and the snapshot diff, especially non-nullable audit columns
+   on populated tables, existing indexes/constraints, query-filter lifecycle, and any
+   unrelated schema changes. The incremental migration should add/update the Franz
+   lifecycle schema; it must not recreate existing business tables.
 3. For a fresh database, apply both migrations in order.
 4. For an existing database, first verify that its schema exactly matches the legacy
    baseline. Record the baseline migration as already applied in `__EFMigrationsHistory`
