@@ -4,7 +4,10 @@ using Franz.Common.Mediator.Handlers;
 using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
+using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Brouillons;
+using PilotageForfaits.Application.Calcul;
+using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Application.Import;
 using PilotageForfaits.Contracts.Import;
 using PilotageForfaits.Contracts.Exports;
@@ -79,6 +82,28 @@ public sealed class LayerDependencyTests
         AssertNoProjectReferences(ApplicationAssembly,
             "PilotageForfaits.Infrastructure",
             "PilotageForfaits.Api");
+    }
+
+    [Fact]
+    public void Extracted_application_workflows_must_not_depend_on_the_legacy_context()
+    {
+        var workflows = new[]
+        {
+            typeof(ConstructeurProjetCalcul),
+            typeof(UniciteProjet),
+            typeof(ServiceAcces),
+            typeof(ServiceJournal),
+            typeof(ProjetsService),
+            typeof(BrouillonsService)
+        };
+
+        foreach (var workflow in workflows)
+        {
+            var constructor = Assert.Single(workflow.GetConstructors());
+            Assert.DoesNotContain(
+                constructor.GetParameters(),
+                parameter => parameter.ParameterType == typeof(IContexteDonnees));
+        }
     }
 
     [Fact]
