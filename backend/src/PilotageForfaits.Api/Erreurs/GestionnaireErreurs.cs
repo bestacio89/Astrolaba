@@ -9,7 +9,7 @@ namespace PilotageForfaits.Api.Erreurs;
 /// Transforme les erreurs en réponses HTTP claires, au format standard « ProblemDetails » :
 /// règle métier → 422, introuvable → 404, accès refusé → 403, modification simultanée ou écriture refusée par la base → 409, requête mal formée → 400/413, sinon 500 (sans détail technique).
 /// </summary>
-public sealed class GestionnaireErreurs(IProblemDetailsService problemes, ILogger<GestionnaireErreurs> journal, IHostEnvironment environnement) : IExceptionHandler
+public sealed class GestionnaireErreurs(IProblemDetailsService problemes, ILogger<GestionnaireErreurs> journal) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext contexte, Exception exception, CancellationToken annulation)
     {
