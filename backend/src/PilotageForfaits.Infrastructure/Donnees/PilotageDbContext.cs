@@ -11,7 +11,7 @@ using PilotageForfaits.Domain.Entites;
 namespace PilotageForfaits.Infrastructure.Donnees;
 
 /// <summary>
-/// Accès à la base relationnelle (SQL Server) avec Entity Framework Core et PostgreSQL.
+/// Accès à la base relationnelle PostgreSQL avec Entity Framework Core.
 /// La structure des tables est décrite dans le dossier Configurations, une classe par objet du modèle de données.
 /// </summary>
 public sealed class PilotageDbContext(
