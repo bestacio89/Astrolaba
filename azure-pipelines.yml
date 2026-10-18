@@ -1,8 +1,5 @@
-# Build and test the backend and frontend, and verify the deterministic reference scenarios.
-trigger:
-  branches:
-    include:
-      - '*'
+# Build and test the backend and frontend, and verify the deterministic reference scenarios on pull requests.
+trigger: none
 
 pr:
   branches:

@@ -1,8 +1,7 @@
-# Validate backend, frontend, and deterministic reference scenarios on every push and pull request.
+# Validate backend, frontend, and deterministic reference scenarios on pull requests.
 name: CI
 
 on:
-  push:
   pull_request:
 
 permissions:
