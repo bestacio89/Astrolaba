@@ -156,6 +156,26 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(ExporterCopilCommandHandler)));
         Assert.True(typeof(ICommandHandler<ExporterCoprojCommand, FichierExport>)
             .IsAssignableFrom(typeof(ExporterCoprojCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirStatutTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirStatutTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirAvancementTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirAvancementTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirResteAFaireTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirResteAFaireTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirDatesTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDatesTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirLibelleTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirLibelleTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirCommentaireTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirCommentaireTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirClassementTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirClassementTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirBilanIaTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirBilanIaTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirEcheanceTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirEcheanceTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SaisirConsommeTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SaisirConsommeTacheCommandHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
