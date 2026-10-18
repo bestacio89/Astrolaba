@@ -2,55 +2,98 @@
 
 ## Objective
 
-Align Astrolaba's persistence boundary with the proven patterns in
+Align Astrolaba's persistence boundary with the patterns in
 [HeroService / Develop_Unity_V1](https://github.com/bestacio89/HeroService/tree/Develop_Unity_V1)
-without copying assumptions that do not fit Astrolaba's application.
+while preserving Astrolaba's SQL Server schema, optimistic concurrency, restricted
+deletes, project integrity, authorization, calculations, and TSP import/export behavior.
 
-Astrolaba's persistence layer must preserve SQL Server, optimistic concurrency,
-restricted deletes, project data integrity, existing authorization, calculations,
-and TSP import/export behavior throughout the migration.
+## Entity model: Franz is the source of truth
 
-## Architectural differences to preserve deliberately
+All persisted Astrolaba entities derive from `PilotageForfaits.Domain.Entites.Entite`,
+which itself derives from `Franz.Common.Business.Domain.Entity<Guid>`. This keeps
+Franz's `IEntity<Guid>` identity and audit/lifecycle contract as the only shared
+persistence entity model. Astrolaba extends that contract only with its domain-specific
+`Version` concurrency token. `EntiteDeProjet` adds the project ownership key; it does
+not duplicate Franz identity, audit, or soft-delete fields.
 
-HeroService uses Franz.Common.EntityFramework, DbContextBase,
-AddUnitOfWork<TDbContext>(), entity repository registration, and repository
-contracts in its Contracts assembly. Astrolaba's API Contracts assembly is
-intentionally transport-only and is guarded by architecture tests against
-Application and Domain references. Persistence ports must therefore live in an
-application-facing abstraction boundary (or a dedicated persistence-contract
-assembly), not be added to API Contracts at the cost of reversing that dependency rule.
+Infrastructure uses `DbContextBase` from `Franz.Common.EntityFramework`, registers
+`AddUnitOfWork<PilotageDbContext>()`, `AddEntityRepositories<PilotageDbContext>()`,
+and the mediator persistence behavior. The current-user adapter supplies the authenticated
+Entra ID object identifier for Franz audit fields. Ordinary deletes must retain Franz's
+soft-delete semantics and global query filters.
 
-The current migration branch now references Franz.Common.Business 2.3.0 directly from Domain and Application. Astrolaba's Entite derives from Franz Entity<Guid>, so every persisted domain entity implements IEntity<Guid> and inherits framework auditing/soft-delete metadata while retaining the Astrolaba Version concurrency token. Infrastructure registers DbContextBase, AddUnitOfWork<PilotageDbContext>(), AddEntityRepositories<PilotageDbContext>(), and Franz's command PersistenceBehavior. A CurrentUserService adapter supplies the authenticated external identity for audit fields. The application uses Franz's IEntityRepository<Projet, Guid> for the archive/restore tracked lookup and commits through the shared unit of work.
+Astrolaba intentionally retains one exceptional physical-delete workflow for projects
+created by mistake. It must remain explicit, authorization-protected, transactionally
+atomic, dependency ordered, and tested against SQL Server. It must not become a second
+general-purpose delete lifecycle alongside Franz.
 
-Astrolaba currently exposes IContexteDonnees with EF Core DbSet<T> properties.
-Application services use EF query composition directly, so replacing the context
-with repositories is a behavioral migration, not a mechanical rename.
+## Application boundary still requires migration
 
-## Incremental sequence
+`IContexteDonnees` still exposes EF Core `DbSet<T>` from Application, and application
+services still compose EF queries directly. This is not a clean persistence boundary.
+Replace it with focused application-facing ports whose contracts express use-case query
+and mutation needs; implement those ports in Infrastructure using EF Core and Franz
+repositories. Do not replace the context with a generic `IQueryable<T>` abstraction or
+load entire tables through generic repository methods.
 
-1. **Lock down persistence invariants.** Add model-level tests for optimistic
-   concurrency tokens, no cascade deletes, decimal precision, and project ownership.
-2. **Introduce the Franz persistence foundation.** Done: pin Franz.Common.EntityFramework 2.3.0, derive PilotageDbContext from DbContextBase, register the unit of work and command persistence behavior, and preserve Astrolaba's Version concurrency token, SQL Server provider, retry policy, and restricted foreign keys. The persistence behavior saves after successful commands; it does not provide a transaction around multi-step writes. Those transaction boundaries still require integration coverage.
-3. **Adopt the entity contract and repositories.** Implemented on this branch: all persisted entities inherit Franz Entity<Guid>; generic repositories are registered by Franz's discovery extension; archive/restore uses Franz IEntityRepository and the explicit unit of work. Other application workflows still use IContexteDonnees and must be migrated incrementally. Keep specialized query shapes in focused repositories rather than forcing every query through GetAllAsync.
-5. **Migrate application services incrementally.** Move one cohesive workflow at a
-   time, retaining authorization checks, concurrency behavior, calculations, and
-   transaction boundaries. Keep IContexteDonnees only as a temporary compatibility
-   seam until no callers remain.
-6. **Strengthen verification and schema rollout.** Model tests now enforce IEntity inheritance, auditing/filter metadata, repository registration, generated Guid identity, concurrency tokens, restricted deletes, decimal precision, and project ownership. A database migration is a mandatory release gate because Entity<Guid> adds audit columns and soft-delete filters. There are currently no checked-in EF migrations; generate and review the initial migration with the repository's EF tooling before deploying this model to any existing database. Add SQL Server-backed concurrency, soft-delete, hard-delete, and transaction integration tests.
-7. **Remove the legacy seam.** Once all services are migrated, remove direct EF Core
-   access from Application and delete IContexteDonnees if it is no longer needed.
+Migrate cohesive workflows incrementally and preserve:
+- authorization and project visibility rules;
+- query filters for soft-deleted entities;
+- optimistic concurrency and the HTTP 409 mapping;
+- aggregate invariants and calculations;
+- atomic multi-entity writes and rollback behavior;
+- explicit physical deletion only for the approved project-removal use case.
 
-## Important persistence semantics
+Consolidate persistence at one command boundary. Do not mix immediate-save repository
+mutations with a multi-step unit of work. Franz's persistence behavior saves after a
+successful command; it is not a substitute for a transaction around multiple writes.
+Remove explicit service-level saves only after verifying that every caller is dispatched
+through the mediator and that the workflow's transaction semantics remain intact.
 
-- Franz's DbContextBase soft-deletes entities implementing IEntity<TKey> when EF tracks them as Deleted, and its global query filters hide IsDeleted entities. The application must use this for ordinary deletes.
-- Astrolaba retains one deliberate permanent-delete workflow: removing a project created by mistake, after checking that no operational activity exists. PilotageDbContext handles that explicit operation through dependency-ordered SQL deletes inside the configured execution strategy, bypassing the soft-delete path. The shared unit of work still invokes this behavior at SaveChangesAsync.
-- Franz's generic EntityRepository saves immediately in its CRUD methods. Multi-step application workflows must not call those mutating methods midway through a unit of work; use tracked entities plus the explicit IUnitOfWork commit or a purpose-built repository method that respects the workflow's transaction boundary.
-- The mediator PersistenceBehavior is enabled and saves after successful commands. Existing services still contain explicit SaveChangesAsync calls, so the pipeline can perform a second no-op save. Consolidating writes at the command boundary is follow-up work and must not be conflated with transaction orchestration.
-- Adding the inherited audit properties changes the EF model. Since no EF migration is checked in yet, this branch is not deployable to an existing database until a reviewed migration is generated and applied.
+## Migration rollout: mandatory release gate
 
-## Out of scope for this phase
+There are currently **no checked-in EF migrations**. The previously generated
+`AddFranzAuditColumns` migration was removed because EF generated a full initial schema
+(`CreateTable` operations), not an incremental audit-column migration. Applying that
+migration to an existing database would fail when it encounters tables that already exist.
+Do not restore or apply that generated migration as-is.
 
-- Changing the database provider or schema without an explicit migration.
-- Enabling the Franz transaction pipeline before transaction behavior is tested.
-- Changing domain rules, calculations, authorization, or TSP payload behavior.
-- Deployment infrastructure changes.
+Use a two-stage migration history:
+
+1. From the pre-Franz model on `develop`, generate and review an
+   `InitialSchemaBaseline` migration. It represents the legacy schema before the inherited
+   Franz audit and soft-delete fields were added. Bring its migration and snapshot files
+   onto the feature branch without regenerating it against the new model.
+2. On the feature branch, generate `AddFranzAuditColumns` against that legacy snapshot.
+   Review every operation, especially non-nullable audit columns on populated tables,
+   existing indexes/constraints, and the query-filter lifecycle.
+3. For a fresh database, apply both migrations in order.
+4. For an existing database, first verify that its schema exactly matches the legacy
+   baseline. Record the baseline migration as already applied in `__EFMigrationsHistory`
+   (without executing its table-creation operations), then apply only the incremental
+   Franz audit migration. Do not stamp the baseline on an unverified or drifted schema.
+5. Test both paths: fresh database creation and upgrade of a disposable copy containing
+   representative existing rows. Verify that existing business data is preserved, audit
+   fields receive valid Franz-compatible values, and ordinary deletes are soft deletes.
+
+Never apply schema changes automatically at application startup. Generate and inspect the
+SQL script, test it on a disposable SQL Server database, and treat production application
+as a separate deployment operation.
+
+## Verification
+
+Model tests should enforce `IEntity<Guid>` inheritance, Franz audit properties and query
+filters, generic repository registration, generated Guid identities, concurrency tokens,
+restricted foreign keys, decimal precision, and project ownership.
+
+Provider integration tests must use SQL Server for migration upgrade, concurrent updates,
+audit actor/timestamps, soft-delete filtering, permanent project deletion with dependent
+rows, failure rollback, and transaction retry behavior. SQLite tests remain useful for
+fast domain persistence checks but do not prove SQL Server DDL or locking behavior.
+
+## Out of scope
+
+- Changing the database provider without an explicit design decision.
+- Weakening audit or soft-delete behavior to make migration easier.
+- Enabling a transaction pipeline without tests that prove its transaction semantics.
+- Changing business rules, calculations, authorization, or TSP payload behavior.
