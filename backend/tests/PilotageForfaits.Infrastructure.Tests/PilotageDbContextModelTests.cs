@@ -1,3 +1,6 @@
+using Franz.Common.Business.Domain;
+using Franz.Common.Business.Repositories;
+using Franz.Common.EntityFramework.Extensions;
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +24,70 @@ public sealed class PilotageDbContextModelTests
 
         var dispatcherServices = new ServiceCollection().BuildServiceProvider();
         return new PilotageDbContext(options, new FranzDispatcher(dispatcherServices));
+    }
+
+    [Fact]
+    public void Every_persisted_entity_uses_Franz_IEntity_and_framework_auditing()
+    {
+        using var context = CreateContext();
+
+        var entities = context.Model.GetEntityTypes()
+            .Where(type => !type.IsOwned())
+            .ToArray();
+
+        Assert.NotEmpty(entities);
+        Assert.All(entities, entityType =>
+        {
+            Assert.Contains(entityType.ClrType.GetInterfaces(), contract =>
+                contract.IsGenericType &&
+                contract.GetGenericTypeDefinition() == typeof(IEntity<>));
+
+            Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.IsDeleted)));
+            Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.DateCreated)));
+            Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.CreatedBy)));
+            Assert.NotNull(entityType.GetQueryFilter());
+        });
+    }
+
+    [Fact]
+    public void Franz_entity_repositories_are_registered_for_every_persisted_entity()
+    {
+        var services = new ServiceCollection();
+        services.AddEntityRepositories<PilotageDbContext>();
+
+        var registeredRepositories = services
+            .Where(descriptor => descriptor.ServiceType.IsGenericType &&
+                                 descriptor.ServiceType.GetGenericTypeDefinition() == typeof(IEntityRepository<,>))
+            .Select(descriptor => descriptor.ServiceType)
+            .ToHashSet();
+
+        using var context = CreateContext();
+        var persistedTypes = context.Model.GetEntityTypes()
+            .Where(type => !type.IsOwned() &&
+                           type.ClrType.GetInterfaces().Any(contract =>
+                               contract.IsGenericType &&
+                               contract.GetGenericTypeDefinition() == typeof(IEntity<>)))
+            .ToArray();
+
+        Assert.NotEmpty(persistedTypes);
+        Assert.All(persistedTypes, entityType =>
+        {
+            var entityContract = entityType.ClrType.GetInterfaces().Single(contract =>
+                contract.IsGenericType &&
+                contract.GetGenericTypeDefinition() == typeof(IEntity<>));
+            var repositoryContract = typeof(IEntityRepository<,>)
+                .MakeGenericType(entityType.ClrType, entityContract.GetGenericArguments()[0]);
+
+            Assert.Contains(repositoryContract, registeredRepositories);
+        });
+    }
+
+    [Fact]
+    public void New_domain_entities_keep_generated_Guid_identity()
+    {
+        Assert.NotEqual(Guid.Empty, new Projet().Id);
+        Assert.NotEqual(Guid.Empty, new Utilisateur().Id);
+        Assert.NotEqual(Guid.Empty, new Tache().Id);
     }
 
     [Fact]
