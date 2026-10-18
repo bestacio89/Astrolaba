@@ -1773,7 +1773,7 @@
  },
  "track": {},
  "warnings": [
-  "Période du projet absente du TSP : renseignez le début et la fin dans ⚙ Paramètres du projet › Dates du projet.",
+  "Période du projet absente du TSP : renseignez le début et la fin dans ⚙ Paramètres › Dates du projet.",
   "Onglet PLANNING présent mais vide (0 JH) : la courbe « prévu » du Plan de charge restera vide.",
   "Fiche projet vide dans le TSP : le nom du fichier est utilisé comme nom de projet (modifiable dans TSP › Fiche)."
  ]
