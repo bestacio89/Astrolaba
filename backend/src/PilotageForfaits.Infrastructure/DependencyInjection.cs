@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddBehaviors();
         services.AddScoped<IContexteDonnees>(sp => sp.GetRequiredService<PilotageDbContext>());
         services.AddScoped<ICurrentUserService, AstrolabaCurrentUserService>();
+        services.AddScoped<IRechercheIdentiteProjet, RechercheIdentiteProjet>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
