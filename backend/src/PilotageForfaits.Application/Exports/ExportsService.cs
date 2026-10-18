@@ -11,12 +11,6 @@ using PilotageForfaits.Domain.Entites;
 
 namespace PilotageForfaits.Application.Exports;
 
-/// <summary>Fichier produit (contenu et nom proposé au téléchargement).</summary>
-public sealed record FichierExport(byte[] Contenu, string Nom)
-{
-    public const string TypeXlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-}
-
 /// <summary>
 /// Exports COPIL et COPROJ (Excel). Comme dans le POC, une photo des indicateurs est prise à chaque export
 /// (carte « Évolution d'un comité à l'autre » du tableau de bord), et la date du dernier COPROJ est retenue.
