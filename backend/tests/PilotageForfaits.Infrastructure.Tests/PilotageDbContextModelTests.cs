@@ -45,6 +45,14 @@ public sealed class PilotageDbContextModelTests
     }
 
     [Fact]
+    public void Postgres_model_matches_the_checked_in_migration_snapshot()
+    {
+        using var context = CreateContext();
+
+        Assert.False(context.Database.HasPendingModelChanges());
+    }
+
+    [Fact]
     public void Astrolaba_entity_base_extends_Franz_without_redeclaring_lifecycle_state()
     {
         Assert.Equal(typeof(Entity<Guid>), typeof(Entite).BaseType);
