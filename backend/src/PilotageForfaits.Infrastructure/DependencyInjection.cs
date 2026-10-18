@@ -29,7 +29,6 @@ public static class DependencyInjection
         services.AddScoped<DbContextBase>(sp => sp.GetRequiredService<PilotageDbContext>());
         services.AddEntityRepositories<PilotageDbContext>();
         services.AddBehaviors();
-        services.AddScoped<IContexteDonnees>(sp => sp.GetRequiredService<PilotageDbContext>());
         services.AddScoped<ICurrentUserService, AstrolabaCurrentUserService>();
         services.AddScoped<IRechercheIdentiteProjet, RechercheIdentiteProjet>();
         services.AddScoped<IJournalWriter, JournalWriter>();
