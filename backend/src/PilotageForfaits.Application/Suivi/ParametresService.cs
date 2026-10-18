@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -10,7 +9,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// Réglages du suivi (valables pour toute l'équipe du projet) : regroupement, alertes, optimisation IA, dates du projet,
 /// noms des axes, fiche (client, projet, référence) et types de tâches. Règles du POC.
 /// </summary>
-public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
+public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite, IParametresPersistence persistence)
 {
     /// <summary>Délais d'alerte proposés (jours avant la date).</summary>
     public static readonly IReadOnlyList<int> DelaisAlerte = [0, 1, 2, 3, 5, 7, 10, 14, 21, 30];
@@ -64,7 +63,7 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
     public async Task<ResultatSaisieDto> DefinirProfilIaAsync(Guid projetId, ProfilIaCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var profils = await o.Db.Profils.Where(p => p.ProjetId == projetId).ToListAsync(a);
+        var profils = (await persistence.ListerProfilsAsync(projetId, a)).ToList();
         if (c.ProfilId is not null && profils.All(p => p.Id != c.ProfilId)) throw new IntrouvableException("Profil introuvable.");
         foreach (var p in profils) p.EstAgentIa = p.Id == c.ProfilId;
         o.Noter(projetId, u, "Paramètres", projetId, "profil IA", null, profils.FirstOrDefault(p => p.Id == c.ProfilId)?.Nom ?? "aucun");
@@ -81,8 +80,8 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
             var x = SaisieOutils.Nettoyer(v);
             if (x.Length > 0 && !valeurs.Contains(x)) valeurs.Add(x.Length > 400 ? x[..400] : x);
         }
-        o.Db.ValeursIa.RemoveRange(await o.Db.ValeursIa.Where(x => x.ProjetId == projetId && x.Liste == liste).ToListAsync(a));
-        for (var i = 0; i < valeurs.Count; i++) o.Db.ValeursIa.Add(new ValeurListeIa { ProjetId = projetId, Liste = liste, Libelle = valeurs[i], Ordre = i });
+        persistence.SupprimerValeursIa(await persistence.ListerValeursIaAsync(projetId, liste, a));
+        for (var i = 0; i < valeurs.Count; i++) persistence.AjouterValeurIa(new ValeurListeIa { ProjetId = projetId, Liste = liste, Libelle = valeurs[i], Ordre = i });
         o.Noter(projetId, u, "Paramètres", projetId, liste == ListeIa.Levier ? "leviers IA" : "causes de dépassement IA", null, string.Join(" ; ", valeurs));
         var message = valeurs.Count > 0 ? $"{valeurs.Count} type(s) enregistré(s)." : "Liste par défaut rétablie.";
         return await o.TerminerAsync(projetId, new List<MessageDto> { new(message, "succes") }, a);
@@ -123,12 +122,12 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
     {
         var u = await o.ExigerChefAsync(projetId, a);
         var nom = SaisieOutils.Nettoyer(c.Nom);
-        var axe = await o.Db.Axes.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == code, a);
+        var axe = await persistence.ChargerAxeAsync(projetId, code, a);
         if (axe is null)
         {
-            var ordre = await o.Db.Axes.Where(x => x.ProjetId == projetId).Select(x => (int?)x.Ordre).MaxAsync(a) ?? -1;
+            var ordre = await persistence.DernierOrdreAxeAsync(projetId, a);
             axe = new Axe { ProjetId = projetId, Code = code, Ordre = ordre + 1 };
-            o.Db.Axes.Add(axe);
+            persistence.AjouterAxe(axe);
         }
         var ancien = axe.Nom;
         axe.Nom = nom;
@@ -154,7 +153,7 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
         // le client, le nom ou la référence forment l'identité du forfait : elle ne doit pas rejoindre celle d'un autre projet
         await unicite.ExigerLibreAsync(p.Reference, p.Client, p.Nom, p.Id, a);
         p.CalculerCleUnicite();
-        var champ = await o.Db.ChampsFiche.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Cle == c.Champ, a);
+        var champ = await persistence.ChargerChampFicheAsync(projetId, c.Champ, a);
         if (champ is not null) champ.Valeur = v;
         o.Noter(projetId, u, "Projet", p.Id, $"fiche · {c.Champ}", ancien, v);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
@@ -167,14 +166,14 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
         var u = await o.ExigerChefAsync(projetId, a);
         var nom = SaisieOutils.Nettoyer(c.Nom);
         if (nom.Length == 0) throw new RegleMetierException("Saisissez le nom du type à ajouter.");
-        var types = await o.Db.TypesTache.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var types = (await persistence.ListerTypesAsync(projetId, a)).ToList();
         if (types.Any(x => string.Equals(x.Nom, nom, StringComparison.OrdinalIgnoreCase))) throw new RegleMetierException("Ce type existe déjà.");
         var type = new TypeTache
         {
             ProjetId = projetId, Code = "T" + Guid.NewGuid().ToString("N")[..10], Nom = nom, Socle = false,
             Ordre = types.Count == 0 ? 0 : types.Max(x => x.Ordre) + 1,
         };
-        o.Db.TypesTache.Add(type);
+        persistence.AjouterType(type);
         o.Noter(projetId, u, "Type de tâche", type.Id, "ajout", null, nom);
         return await o.TerminerAsync(projetId, new List<MessageDto>
         {
@@ -186,7 +185,7 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
     public async Task<ResultatSaisieDto> RenommerTypeAsync(Guid projetId, string code, TypeCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var types = await o.Db.TypesTache.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var types = (await persistence.ListerTypesAsync(projetId, a)).ToList();
         var type = types.FirstOrDefault(x => x.Code == code) ?? throw new IntrouvableException("Type de tâche introuvable.");
         if (type.Socle) throw new RegleMetierException("Type socle : non modifiable.");
         var nom = SaisieOutils.Nettoyer(c.Nom);
@@ -202,19 +201,19 @@ public sealed class ParametresService(SaisieOutils o, UniciteProjet unicite)
     public async Task<ResultatSaisieDto> SupprimerTypeAsync(Guid projetId, string code, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var type = await o.Db.TypesTache.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == code, a)
+        var type = await persistence.ChargerTypeAsync(projetId, code, a)
             ?? throw new IntrouvableException("Type de tâche introuvable.");
         if (type.Socle) throw new RegleMetierException("Type socle : non supprimable.");
-        foreach (var t in await o.Db.Taches.Where(x => x.TypeTacheId == type.Id).ToListAsync(a))
+        foreach (var t in await persistence.ChargerTachesParTypeAsync(type.Id, a))
         {
             t.TypeTacheId = null;
             t.TypeSaisi = true;
         }
-        o.Db.TypesTache.Remove(type);
+        persistence.SupprimerType(type);
         o.Noter(projetId, u, "Type de tâche", type.Id, "suppression", type.Nom, null);
         return await o.TerminerAsync(projetId, new List<MessageDto> { new($"Type « {type.Nom} » supprimé.", "succes") }, a);
     }
 
     private async Task<Projet> ProjetAsync(Guid projetId, CancellationToken a) =>
-        await o.Db.Projets.FirstOrDefaultAsync(p => p.Id == projetId, a) ?? throw new IntrouvableException("Projet introuvable.");
+        await persistence.ChargerProjetAsync(projetId, a) ?? throw new IntrouvableException("Projet introuvable.");
 }
