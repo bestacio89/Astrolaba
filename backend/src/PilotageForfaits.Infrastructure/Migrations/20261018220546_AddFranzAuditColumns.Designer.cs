@@ -12,8 +12,8 @@ using PilotageForfaits.Infrastructure.Donnees;
 namespace PilotageForfaits.Infrastructure.Migrations
 {
     [DbContext(typeof(PilotageDbContext))]
-    [Migration("20261018220546_AddFranzAuditColumns")]
-    partial class AddFranzAuditColumns
+    [Migration("20261018220546_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

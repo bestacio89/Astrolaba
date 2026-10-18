@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace PilotageForfaits.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddFranzAuditColumns : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -29,7 +29,6 @@ public static class DependencyInjection
         services.AddScoped<DbContextBase>(sp => sp.GetRequiredService<PilotageDbContext>());
         services.AddEntityRepositories<PilotageDbContext>();
         services.AddBehaviors();
-        services.AddScoped<IContexteDonnees>(sp => sp.GetRequiredService<PilotageDbContext>());
         services.AddScoped<ICurrentUserService, AstrolabaCurrentUserService>();
         services.AddScoped<IRechercheIdentiteProjet, RechercheIdentiteProjet>();
         services.AddScoped<IJournalWriter, JournalWriter>();
@@ -46,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IReferencesPersistence, ReferencesPersistence>();
         services.AddScoped<IRegistresPersistence, RegistresPersistence>();
         services.AddScoped<IParametresPersistence, ParametresPersistence>();
+        services.AddScoped<ISaisieDonneesPersistence, SaisieDonneesPersistence>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();

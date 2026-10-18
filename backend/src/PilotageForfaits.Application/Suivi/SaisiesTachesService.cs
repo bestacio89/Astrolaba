@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -41,11 +40,11 @@ public sealed class SaisiesTachesService(SaisieOutils o)
         if (nouveau != StatutTache.Valide && etaitValidee)
         {
             // livrable rouvert : la validation client portait sur la version précédente
-            var livrable = await o.Db.Livrables.FirstOrDefaultAsync(l => l.TacheId == t.Id, a);
+            var livrable = await o.Persistence.ObtenirLivrableTacheAsync(t.Id, a);
             if (livrable?.ValideParClientLe is { } vl)
             {
                 livrable.ValideParClientLe = null;
-                if (string.IsNullOrEmpty(livrable.LienStockage)) o.Db.Livrables.Remove(livrable);
+                if (string.IsNullOrEmpty(livrable.LienStockage)) o.Persistence.SupprimerLivrable(livrable);
                 messages.Add(new MessageDto($"Livrable rouvert : la validation client du {Formats.Date(vl)} est retirée (elle portait sur la version précédente)."));
             }
         }
@@ -153,7 +152,7 @@ public sealed class SaisiesTachesService(SaisieOutils o)
                 if (v.Length == 0) t.TypeTacheId = null;
                 else
                 {
-                    var type = await o.Db.TypesTache.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == v, a)
+                    var type = await o.Persistence.ObtenirTypeTacheAsync(projetId, v, a)
                         ?? throw new IntrouvableException("Type de tâche introuvable.");
                     t.TypeTacheId = type.Id;
                 }
@@ -203,7 +202,7 @@ public sealed class SaisiesTachesService(SaisieOutils o)
         if (c.Numero is null) t.EcheanceId = null;
         else
         {
-            var e = await o.Db.Echeances.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Numero == c.Numero, a)
+            var e = await o.Persistence.ObtenirEcheanceAsync(projetId, c.Numero.Value, a)
                 ?? throw new IntrouvableException("Échéance introuvable.");
             if (!e.EstSelectionnable && t.EcheanceId != e.Id)
                 throw new RegleMetierException($"L’échéance n° {e.Numero} est déjà facturée : elle ne peut plus être liée à une tâche.");
@@ -236,7 +235,7 @@ public sealed class SaisiesTachesService(SaisieOutils o)
         if (!multi && v > 1)
             throw new RegleMetierException($"Impossible : on ne peut pas saisir plus d’une journée de travail par jour ({Formats.Jh(v!.Value)} JH saisis).");
 
-        var duJour = await o.Db.Consommes.Where(x => x.ProjetId == projetId && x.ProfilProjetId == profil.Id && x.Jour == c.Jour).ToListAsync(a);
+        var duJour = await o.Persistence.ListerConsommesJourAsync(projetId, profil.Id, c.Jour, a);
         var existant = duJour.FirstOrDefault(x => x.TacheId == t.Id);
         var ancien = existant?.JoursHomme ?? 0;
         var autres = duJour.Where(x => x.TacheId != t.Id).Sum(x => x.JoursHomme);
@@ -245,10 +244,10 @@ public sealed class SaisiesTachesService(SaisieOutils o)
                 $"Une journée de travail ne dépasse pas 1 JH : il reste {Formats.Jh(Math.Max(0, 1 - autres))} JH ce jour-là.");
 
         // somme faite en mémoire : certaines bases (SQLite des tests) ne savent pas additionner des décimaux
-        var totalAvant = (await o.Db.Consommes.Where(x => x.TacheId == t.Id).Select(x => x.JoursHomme).ToListAsync(a)).Sum();
+        var totalAvant = (await o.Persistence.ListerJoursConsommesTacheAsync(t.Id, a)).Sum();
         if (v is null)
         {
-            if (existant is not null) o.Db.Consommes.Remove(existant);
+            if (existant is not null) o.Persistence.SupprimerConsomme(existant);
         }
         else if (existant is not null)
         {
@@ -257,7 +256,7 @@ public sealed class SaisiesTachesService(SaisieOutils o)
             existant.SaisiParId = u.Id;
         }
         else
-            o.Db.Consommes.Add(new Consomme
+            o.Persistence.AjouterConsomme(new Consomme
             {
                 ProjetId = projetId, TacheId = t.Id, ProfilProjetId = profil.Id, Jour = c.Jour, JoursHomme = v.Value,
                 SaisiLe = o.Horloge.Maintenant, SaisiParId = u.Id,
@@ -278,7 +277,7 @@ public sealed class SaisiesTachesService(SaisieOutils o)
         }
         if (v is not null && ancien == 0)
         {
-            var projet = await o.Db.Projets.AsNoTracking().FirstAsync(p => p.Id == projetId, a);
+            var projet = await o.Persistence.ObtenirProjetAsync(projetId, a);
             var finP = projet.FinPrevue ?? projet.FinContractuelle;
             var d = c.Jour;
             string? alerte = !Calendrier.EstOuvre(d)
@@ -301,22 +300,22 @@ public sealed class SaisiesTachesService(SaisieOutils o)
     /// <summary>Axe du projet (créé s'il n'existe pas encore : code trouvé seulement sur des tâches).</summary>
     internal async Task<Axe> AxeAsync(Guid projetId, string code, CancellationToken a)
     {
-        var axe = await o.Db.Axes.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == code, a);
+        var axe = await o.Persistence.ObtenirAxeAsync(projetId, code, a);
         if (axe is not null) return axe;
-        var ordre = await o.Db.Axes.Where(x => x.ProjetId == projetId).Select(x => (int?)x.Ordre).MaxAsync(a) ?? -1;
+        var ordre = await o.Persistence.OrdreAxeMaxAsync(projetId, a);
         axe = new Axe { ProjetId = projetId, Code = code, Nom = "", Ordre = ordre + 1 };
-        o.Db.Axes.Add(axe);
+        o.Persistence.AjouterAxe(axe);
         return axe;
     }
 
     /// <summary>Phase du projet (créée si elle n'existe pas encore).</summary>
     internal async Task<Phase> PhaseAsync(Guid projetId, string code, CancellationToken a)
     {
-        var phase = await o.Db.Phases.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == code, a);
+        var phase = await o.Persistence.ObtenirPhaseAsync(projetId, code, a);
         if (phase is not null) return phase;
-        var ordre = await o.Db.Phases.Where(x => x.ProjetId == projetId).Select(x => (int?)x.Ordre).MaxAsync(a) ?? -1;
+        var ordre = await o.Persistence.OrdrePhaseMaxAsync(projetId, a);
         phase = new Phase { ProjetId = projetId, Code = code, Ordre = ordre + 1, ListeReference = false };
-        o.Db.Phases.Add(phase);
+        o.Persistence.AjouterPhase(phase);
         return phase;
     }
 }

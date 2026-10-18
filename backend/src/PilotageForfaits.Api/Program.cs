@@ -1,5 +1,8 @@
 using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Extensions;
+using Franz.Common.EntityFramework.Auditing;
+using Franz.Common.Logging.Extensions;
+using Franz.Common.Mediator.Polly;
 using PilotageForfaits.Application.Projets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
@@ -10,11 +13,16 @@ using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseLog();
 
 // ---------- Couches de l'application ----------
 builder.Services.AjouterApplication();
-builder.Services.AddFranzMediatorV2(null, typeof(ArchiverProjetCommandHandler).Assembly);
+builder.Services.AddFranzMediatorV2(null, typeof(ArchiverProjetCommandHandler).Assembly)
+    .AddFranzSerilogAuditPipeline()
+    .AddFranzSerilogLoggingPipeline();
 builder.Services.AjouterInfrastructure(builder.Configuration);
+builder.Services.AddFranzAuditing();
+builder.Services.AddFranzResilience(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();
 

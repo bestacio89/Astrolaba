@@ -17,7 +17,7 @@ namespace PilotageForfaits.Infrastructure.Donnees;
 public sealed class PilotageDbContext(
     DbContextOptions<PilotageDbContext> options,
     IDispatcher dispatcher,
-    ICurrentUserService? currentUser = null) : DbContextBase(options, dispatcher, currentUser), IContexteDonnees
+    ICurrentUserService? currentUser = null) : DbContextBase(options, dispatcher, currentUser)
 {
     private Guid? _projetIdPourSuppressionDefinitive;
     public DbSet<Utilisateur> Utilisateurs => Set<Utilisateur>();

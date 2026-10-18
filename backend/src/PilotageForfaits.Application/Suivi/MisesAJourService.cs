@@ -19,7 +19,7 @@ public sealed class MisesAJourService(SaisieOutils o)
         var texte = SaisieOutils.Nettoyer(c.Texte);
         if (texte.Length == 0) throw new RegleMetierException("La mise à jour est vide.");
         if (texte.Length > LongueurMaximale) throw new RegleMetierException($"Mise à jour trop longue : {LongueurMaximale} caractères au maximum.");
-        o.Db.MisesAJour.Add(new MiseAJourTache
+        o.Persistence.AjouterMiseAJour(new MiseAJourTache
         {
             ProjetId = projetId, TacheId = t.Id, Le = o.Horloge.Maintenant.UtcDateTime, AuteurId = u.Id, Texte = texte,
         });

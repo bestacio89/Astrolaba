@@ -29,28 +29,41 @@ may invoke the development initializer as part of host startup, but it must not 
 `PilotageDbContext`, EF Core runtime APIs, or SQL Server provider exceptions. HTTP error
 mapping consumes application-level exceptions such as `ConflitException` only.
 
+The API host follows HeroService's operational bootstrap selectively: structured host logging,
+Franz mediator audit/logging pipelines, Franz audit registration, and configurable mediator
+resilience are wired at startup. Astrolaba retains its explicit Entra ID/development authentication,
+ProblemDetails exception mapping, and ASP.NET middleware order rather than layering
+`AddHttpArchitecture` over existing authentication and exception handling without an integration review.
+The Franz transaction pipeline remains intentionally disabled until command-level atomicity is proven.
+
 Astrolaba intentionally retains one exceptional physical-delete workflow for projects
 created by mistake. It must remain explicit, authorization-protected, transactionally
 atomic, dependency ordered, and tested against SQL Server. It must not become a second
 general-purpose delete lifecycle alongside Franz.
 
-## Application boundary still requires migration
+## Application boundary
 
-`IContexteDonnees` still exposes EF Core `DbSet<T>` from Application, and application
-services still compose EF queries directly. This is not a clean persistence boundary.
-Focused ports now isolate project-identity lookup (`IRechercheIdentiteProjet`),
-authorization/profile persistence (`IAccesRepository`), journal appends
-(`IJournalWriter`), project calculation input loading (`IChargeurDonneesProjet`),
-project list/detail/deletion persistence (`IProjetsPersistence`), and draft workflows
-(`IBrouillonsPersistence`). Journal entries
-are added to the current unit of work without an early commit so they commit or roll
-back with the business mutation they describe. Project calculation transformations and
-workflow authorization remain in Application; EF query composition stays in
-Infrastructure. Project creation and archive/restore rely on the mediator persistence
-behavior for their command commit. The exceptional permanent-delete workflow retains
-an explicit commit so successful physical deletion is confirmed before logging.
-Continue replacing the remaining context usages with use-case-specific ports. Do not replace the context with a generic `IQueryable<T>`
-abstraction or load entire tables through generic repository methods.
+Application no longer references the EF Core runtime and no longer exposes the legacy
+`IContexteDonnees`/DbSet abstraction. EF query composition and entity-state operations are
+implemented in Infrastructure behind focused ports.
+
+The ports isolate project-identity lookup (`IRechercheIdentiteProjet`), authorization/profile
+persistence (`IAccesRepository`), journal appends (`IJournalWriter`), project calculation input
+loading (`IChargeurDonneesProjet`), project list/detail/deletion persistence (`IProjetsPersistence`),
+draft workflows (`IBrouillonsPersistence`), tracking reads (`ISuiviPersistence`), and the remaining
+tracking writes (`ISaisieDonneesPersistence`). Other cohesive workflows use ports for exports,
+workshops/deliverables, expenses, invoicing, weekly tracking, planning references, registers,
+and project settings.
+
+Application retains authorization, calculations, domain decisions, and workflow orchestration.
+The tracking persistence port returns domain entities and exposes named query/write operations;
+it does not leak EF Core types, DbSet, IQueryable, or generic table access.
+
+Commit ownership is not yet fully consolidated. Tracking writes currently save through the
+focused persistence port, while some multi-step workflows retain explicit commit behavior.
+Review each command's transaction and journal semantics before removing those explicit commits
+or enabling the Franz transaction pipeline. A successful SaveChanges operation alone does not
+prove atomicity across a multi-step workflow.
 
 Migrate cohesive workflows incrementally and preserve:
 - authorization and project visibility rules;
@@ -66,48 +79,45 @@ successful command; it is not a substitute for a transaction around multiple wri
 Remove explicit service-level saves only after verifying that every caller is dispatched
 through the mediator and that the workflow's transaction semantics remain intact.
 
-## Code-first schema rollout: required before release
+## Code-first schema rollout
 
 Astrolaba is being promoted from a proof of concept into the real application. The existing
-POC database is intentionally disposable, so there is no requirement to preserve its
-schema history or generate a legacy baseline. Do not create a baseline from the old model
-and do not carry the POC's migration history forward.
+POC database is intentionally disposable: no legacy baseline or in-place upgrade path is
+required.
 
-1. Finish the Franz-aligned entity model and Infrastructure mappings first. Review the
-   final `PilotageDbContext` model for identity/audit columns, soft-delete filters,
-   concurrency tokens, foreign keys, indexes, and decimal precision.
-2. From the repository's `backend` directory, generate one clean initial migration from
-   the **current feature branch model**:
+The repository now has a generated initial migration named
+`20261018220546_InitialCreate`. It creates the full current schema; it is not an incremental
+audit-column migration. Do not generate a second baseline or carry the POC database's
+migration history forward. Review the generated migration and snapshot whenever the entity
+model changes, and regenerate the initial migration from the final model if the model review
+finds a mismatch.
 
-   ```powershell
-   dotnet ef migrations add InitialCreate --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
-   ```
+The development initializer uses migrations as the only supported schema-creation path.
+It fails startup if there are no migrations or if the EF model has unrepresented changes;
+it does not fall back to `EnsureCreatedAsync`. The API invokes this initializer only in the
+Development environment. Production schema creation and updates remain deployment operations.
 
-3. Review the migration and model snapshot. This initial migration is expected to create
-   the full schema; verify it contains only the intended final model and no accidental
-   schema artifacts. Do not hand-author generated migration code.
-4. Create a fresh, empty development database and apply the migration. Verify startup,
-   seed/reference data, CRUD workflows, auditing, soft deletion, concurrency, and the
-   exceptional permanent project-delete path.
-5. Remove or reset the old POC database only in the local/development environment after
-   confirming it contains no data that must be retained. Do not drop shared or production
-   databases as part of application startup.
-6. Keep schema changes explicit and reviewable. Production schema creation or updates
-   must be a deployment operation, not an implicit destructive startup action.
-
-Until the final entity model and mappings are stable, do not generate the initial migration:
-otherwise the migration and snapshot will immediately become stale as the refactor continues.
+The existing POC database may be reset only in local/development after confirming that no
+data must be retained. Never drop a shared or production database as part of startup.
 
 ## Verification
 
-Model tests should enforce `IEntity<Guid>` inheritance, Franz audit properties and query
-filters, generic repository registration, generated Guid identities, concurrency tokens,
-restricted foreign keys, decimal precision, and project ownership.
+Architecture tests now enforce that Application does not reference EF Core runtime assemblies
+and that tracking writes depend on the focused persistence port. Model tests enforce
+`IEntity<Guid>` inheritance, Franz audit properties and query filters, generic repository
+registration, generated Guid identities, concurrency tokens, restricted foreign keys,
+decimal precision, and project ownership.
 
-Provider integration tests must use SQL Server for fresh database creation, concurrent updates,
-audit actor/timestamps, soft-delete filtering, permanent project deletion with dependent
-rows, failure rollback, and transaction retry behavior. SQLite tests remain useful for
-fast domain persistence checks but do not prove SQL Server DDL or locking behavior.
+SQL Server integration tests are configured in CI against a fresh database migrated from
+`InitialCreate`. They verify audit actor/timestamps, soft-delete filtering, stale-write
+concurrency conflicts, explicit transaction rollback, and permanent project deletion with
+dependent rows. SQLite tests remain useful for fast persistence checks but do not substitute
+for SQL Server DDL and locking validation.
+
+The Franz transaction pipeline remains disabled until command-level atomicity is established.
+Tracking commands currently persist through their focused port before recalculating the
+tracking response; this ordering must remain covered because the response includes persisted
+changes and the journal write must remain in the same save operation.
 
 ## Out of scope
 
