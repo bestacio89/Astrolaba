@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Exports;
+using PilotageForfaits.Contracts.Exports;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
 
@@ -65,7 +66,7 @@ public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsServi
     [HttpGet("{id:guid}/export")]
     public async Task<IActionResult> Exporter(Guid id, CancellationToken annulation)
     {
-        var f = await brouillons.ExporterAsync(id, annulation);
+        var f = await dispatcher.SendAsync(new ExporterBrouillonQuery(id), annulation);
         return File(f.Contenu, FichierExport.TypeXlsx, f.Nom);
     }
 
