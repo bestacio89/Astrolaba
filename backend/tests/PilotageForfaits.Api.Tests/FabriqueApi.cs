@@ -12,7 +12,7 @@ using PilotageForfaits.Infrastructure.Donnees;
 namespace PilotageForfaits.Api.Tests;
 
 /// <summary>
-/// Démarre l'API complète en mémoire, avec une base SQLite en mémoire (au lieu de SQL Server),
+/// Démarre l'API complète en mémoire, avec une base SQLite en mémoire (au lieu de PostgreSQL),
 /// des utilisateurs fictifs et une date du jour fixe (06/10/2026, celle des scénarios de référence).
 /// </summary>
 public sealed class FabriqueApi : WebApplicationFactory<Program>
