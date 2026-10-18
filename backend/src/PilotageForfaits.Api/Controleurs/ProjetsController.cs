@@ -1,9 +1,7 @@
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PilotageForfaits.Application.Import;
 using PilotageForfaits.Contracts.Import;
-using PilotageForfaits.Application.Projets;
 using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Domain.Commun;
 
@@ -13,7 +11,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/projets")]
-public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService projets, ImportTspService import) : ControllerBase
+public sealed class ProjetsController(IDispatcher dispatcher) : ControllerBase
 {
     /// <summary>Taille maximale d'un TSP (20 Mo).</summary>
     public const long TailleMaxTsp = 20 * 1024 * 1024;
