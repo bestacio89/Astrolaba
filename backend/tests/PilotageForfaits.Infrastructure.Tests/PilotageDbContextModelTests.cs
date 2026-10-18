@@ -133,10 +133,17 @@ public sealed class PilotageDbContextModelTests
         Assert.NotEqual(DateTimeOffset.MinValue, user.DateCreated);
         Assert.False(user.IsDeleted);
 
-        context.Utilisateurs.Remove(user);
+        user.Nom = "Updated";
         await context.SaveChangesAsync();
 
         Assert.Equal(2, user.Version);
+        Assert.Equal("entra-object-id", user.LastModifiedBy);
+        Assert.True(user.LastModifiedDate >= user.DateCreated);
+
+        context.Utilisateurs.Remove(user);
+        await context.SaveChangesAsync();
+
+        Assert.Equal(3, user.Version);
         Assert.True(user.IsDeleted);
         Assert.Equal("entra-object-id", user.DeletedBy);
         Assert.Null(await context.Utilisateurs.SingleOrDefaultAsync(entity => entity.Id == user.Id));
