@@ -10,7 +10,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "test": "ng test --watch=false",
+    "test": "vitest run",
+    "test:angular": "ng test --watch=false",
     "test:surveillance": "ng test",
     "format": "prettier --write \"src/**/*.{ts,html,scss}\""
   },

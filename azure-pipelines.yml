@@ -54,12 +54,29 @@ stages:
       - job: Frontend
         displayName: Angular build and tests
         steps:
+          - checkout: self
           - task: NodeTool@0
             inputs:
               versionSpec: '22.x'
-          - script: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          - task: Cache@2
+            displayName: Cache npm downloads
+            inputs:
+              key: 'npm | "$(Agent.OS)" | frontend/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(Pipeline.Workspace)/.npm
+          - task: Cache@2
+            displayName: Cache Angular build artifacts
+            inputs:
+              key: 'angular | "$(Agent.OS)" | frontend/package-lock.json | frontend/angular.json | frontend/tsconfig.json | frontend/tsconfig.app.json | frontend/tsconfig.spec.json'
+              restoreKeys: |
+                angular | "$(Agent.OS)" | frontend/package-lock.json
+              path: frontend/.angular/cache
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: frontend
+            env:
+              npm_config_cache: $(Pipeline.Workspace)/.npm
           - script: npm run build
             displayName: Build
             workingDirectory: frontend
