@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Import;
+using PilotageForfaits.Contracts.Import;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Application.Projets;
@@ -135,6 +136,12 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(SupprimerBrouillonCommandHandler)));
         Assert.True(typeof(ICommandHandler<LancerBrouillonCommand, Guid>)
             .IsAssignableFrom(typeof(LancerBrouillonCommandHandler)));
+        Assert.True(typeof(IQueryHandler<ListerProjetsQuery, IReadOnlyList<ProjetResumeDto>>)
+            .IsAssignableFrom(typeof(ListerProjetsQueryHandler)));
+        Assert.True(typeof(IQueryHandler<ObtenirProjetQuery, ProjetDetailDto>)
+            .IsAssignableFrom(typeof(ObtenirProjetQueryHandler)));
+        Assert.True(typeof(IQueryHandler<AnalyserTspQuery, ApercuImportDto>)
+            .IsAssignableFrom(typeof(AnalyserTspQueryHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
