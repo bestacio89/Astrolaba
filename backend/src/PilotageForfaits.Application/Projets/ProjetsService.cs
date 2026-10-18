@@ -1,6 +1,5 @@
 using System.Globalization;
 using Franz.Common.Business.Repositories;
-using Franz.Common.Mediator.Pipelines.Core;
 using Microsoft.Extensions.Logging;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
@@ -14,7 +13,7 @@ namespace PilotageForfaits.Application.Projets;
 
 /// <summary>Cas d'usage autour des projets : liste selon les habilitations, création d'un projet vide, vue d'ensemble.</summary>
 public sealed class ProjetsService(
-    IProjetsPersistence persistence, IEntityRepository<Projet, Guid> projetsRepository, IUnitOfWork uniteTravail,
+    IProjetsPersistence persistence, IEntityRepository<Projet, Guid> projetsRepository,
     ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge, ServiceJournal journal, ILogger<ProjetsService> traces,
     UniciteProjet unicite)
 {
@@ -70,7 +69,7 @@ public sealed class ProjetsService(
         });
         persistence.Ajouter(projet);
         journal.Noter(projet.Id, utilisateur.Id, "Projet", projet.Id, "Création", null, "Projet vide");
-        await uniteTravail.CommitAsync(annulation);
+        // The Franz mediator persistence behavior commits the command after successful completion.
         return projet.Id;
     }
 
@@ -92,7 +91,7 @@ public sealed class ProjetsService(
         if (projet.Statut == avant) return;
         journal.Noter(projetId, u.Id, "Projet", projetId, "statut", avant == StatutProjet.Archive ? "Archivé" : "Actif",
             projet.Statut == StatutProjet.Archive ? "Archivé" : "Restauré");
-        await uniteTravail.CommitAsync(annulation);
+        // The Franz mediator persistence behavior commits the archive and journal entry atomically.
     }
 
     /// <summary>
