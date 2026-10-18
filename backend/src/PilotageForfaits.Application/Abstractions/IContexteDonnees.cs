@@ -52,12 +52,6 @@ public interface IContexteDonnees
     DbSet<Notification> Notifications { get; }
     DbSet<BrouillonProjet> Brouillons { get; }
 
-    /// <summary>
-    /// Marque pour suppression le projet et TOUTES ses données (toutes les tables rattachées au projet, journal compris).
-    /// Rien n'est écrit avant SaveChangesAsync. Réservé à la suppression d'un projet créé par erreur (voir ProjetsService).
-    /// </summary>
-    Task MarquerProjetPourSuppressionAsync(Guid projetId, CancellationToken annulation = default);
-
     /// <summary>Enregistre toutes les modifications en une seule transaction.</summary>
     Task<int> SaveChangesAsync(CancellationToken annulation = default);
 }
