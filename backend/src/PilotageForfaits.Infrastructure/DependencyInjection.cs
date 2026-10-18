@@ -1,3 +1,4 @@
+using Franz.Common.EntityFramework;
 using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.EntityFramework.Extensions;
 using Microsoft.EntityFrameworkCore;
