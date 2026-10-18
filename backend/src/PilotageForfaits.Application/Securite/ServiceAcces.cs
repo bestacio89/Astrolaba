@@ -1,4 +1,5 @@
 using Franz.Common.Business.Repositories;
+using Franz.Common.Mediator.Pipelines.Core;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
