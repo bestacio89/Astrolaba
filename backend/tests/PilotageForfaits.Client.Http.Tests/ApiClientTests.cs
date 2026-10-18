@@ -5,6 +5,7 @@ using System.Text.Json;
 using PilotageForfaits.Client.Http;
 using PilotageForfaits.Client.Http.Clients;
 using PilotageForfaits.Contracts.Projets;
+using Xunit;
 
 namespace PilotageForfaits.Client.Http.Tests;
 
