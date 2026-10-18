@@ -8,6 +8,8 @@ using PilotageForfaits.Application.Import;
 using PilotageForfaits.Contracts.Import;
 using PilotageForfaits.Contracts.Exports;
 using PilotageForfaits.Application.Suivi;
+using PilotageForfaits.Application.Securite;
+using PilotageForfaits.Contracts.Moi;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Contracts.Suivi;
@@ -195,6 +197,13 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(ReaffecterChargeTacheCommandHandler)));
         Assert.True(typeof(ICommandHandler<AnnulerReaffectationTacheCommand, ResultatSaisieDto>)
             .IsAssignableFrom(typeof(AnnulerReaffectationTacheCommandHandler)));
+    }
+
+    [Fact]
+    public void Current_user_query_must_have_a_Franz_handler()
+    {
+        Assert.True(typeof(IQueryHandler<ObtenirMoiQuery, MoiDto>)
+            .IsAssignableFrom(typeof(ObtenirMoiQueryHandler)));
     }
 
     [Fact]
