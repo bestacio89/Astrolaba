@@ -14,7 +14,6 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Identity.Web" />
     <PackageReference Include="Franz.Common.Mediator" />
-    <PackageReference Include="Franz.Common.Mediator.Polly" />
     <!-- Nécessaire pour la commande « dotnet ef migrations add » lancée depuis ce projet. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
