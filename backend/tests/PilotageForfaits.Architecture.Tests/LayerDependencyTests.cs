@@ -107,28 +107,14 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
-    public void Extracted_application_workflows_must_not_depend_on_the_legacy_context()
+    public void Application_must_not_reference_ef_core_runtime()
     {
-        var workflows = new[]
-        {
-            typeof(ConstructeurProjetCalcul),
-            typeof(UniciteProjet),
-            typeof(ServiceAcces),
-            typeof(ServiceJournal),
-            typeof(ProjetsService),
-            typeof(BrouillonsService),
-            typeof(SuiviService),
-            typeof(ImportTspService),
-            typeof(ExportsService)
-        };
+        var references = ApplicationAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
 
-        foreach (var workflow in workflows)
-        {
-            var constructor = Assert.Single(workflow.GetConstructors());
-            Assert.DoesNotContain(
-                constructor.GetParameters(),
-                parameter => parameter.ParameterType == typeof(IContexteDonnees));
-        }
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore.Relational", references);
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore.SqlServer", references);
     }
 
     [Fact]
