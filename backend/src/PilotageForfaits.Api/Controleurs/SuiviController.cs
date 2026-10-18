@@ -19,7 +19,7 @@ public sealed class SuiviController(IDispatcher dispatcher, SuiviService suivi) 
 {
     /// <summary>Saisies, indicateurs calculés et droits de l'utilisateur sur le projet.</summary>
     [HttpGet("suivi")]
-    public Task<JsonObject> Obtenir(Guid id, CancellationToken a) => suivi.ObtenirAsync(id, a);
+    public Task<JsonObject> Obtenir(Guid id, CancellationToken a) => dispatcher.SendAsync(new ObtenirSuiviQuery(id), a);
 
     // ---------------------------------------------------------------- tâches
 
