@@ -74,12 +74,14 @@ Use a two-stage migration history:
    dotnet ef migrations add InitialSchemaBaseline --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --context PilotageDbContext
    git add src/PilotageForfaits.Infrastructure/Migrations
    git commit -m "[Feat][Persistence]: add legacy schema baseline"
+   $baselineCommit = git rev-parse HEAD
+   Set-Location E:\Source\Repos\Astrolaba
+   git switch feat/franz-entity-repository-migration
+   git cherry-pick $baselineCommit
    ```
 
-   Cherry-pick that baseline commit onto `feat/franz-entity-repository-migration`, then
-   return to the feature worktree. The baseline migration and snapshot must remain those
-   generated from the pre-Franz model; do not regenerate them after switching to the
-   current model.
+   The baseline migration and snapshot must remain those generated from the pre-Franz
+   model; do not regenerate them after switching to the current model.
 2. On the feature branch, generate `AddFranzAuditColumns` against the legacy snapshot:
 
    ```powershell
