@@ -46,17 +46,8 @@ public sealed record SuggestionsDto(IReadOnlyList<string> Entites, IReadOnlyList
 /// <summary>Réponse à un enregistrement : la nouvelle version et l'analyse mise à jour.</summary>
 public sealed record BrouillonEnregistreDto(int Version, DateTimeOffset ModifieLe, AnalyseBrouillonDto Analyse);
 
-/// <summary>Demande de création d'un brouillon (vierge, ou repris d'un projet existant).</summary>
-public sealed record CreationBrouillonCommande(string? Client, string? Projet, string? Reference, Guid? ProjetSource);
-
 /// <summary>Enregistrement du contenu : la version lue (refus si quelqu'un a enregistré entre-temps) et le TSP complet.</summary>
 public sealed record EnregistrementBrouillonCommande(int Version, TspSaisi? Contenu);
-
-/// <summary>Invitation d'un co-rédacteur par son adresse e-mail (vide : retirer le co-rédacteur).</summary>
-public sealed record CoRedacteurCommande(string? Email);
-
-/// <summary>Lancement : la version lue (on lance exactement ce que l'utilisateur a vu).</summary>
-public sealed record LancementCommande(int Version);
 
 /// <summary>Ce que l'analyse dit du TSP en cours de rédaction : chiffres clés, contrôles et état de chaque rubrique.</summary>
 public sealed record AnalyseBrouillonDto(

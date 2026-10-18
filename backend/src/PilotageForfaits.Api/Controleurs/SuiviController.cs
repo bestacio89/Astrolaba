@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Suivi;
+using PilotageForfaits.Contracts.Suivi;
 using PilotageForfaits.Domain.Entites;
 
 namespace PilotageForfaits.Api.Controleurs;
