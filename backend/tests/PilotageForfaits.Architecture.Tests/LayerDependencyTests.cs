@@ -1,4 +1,5 @@
 using System.Reflection;
+using Franz.Common.Mediator.Dispatchers;
 using Franz.Common.Mediator.Handlers;
 using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
@@ -99,6 +100,26 @@ public sealed class LayerDependencyTests
         Assert.All(controllers, controller =>
             Assert.True(typeof(ControllerBase).IsAssignableFrom(controller),
                 $"{controller.FullName} must derive from ControllerBase."));
+    }
+
+    [Fact]
+    public void Api_controllers_must_dispatch_use_cases_instead_of_injecting_application_services()
+    {
+        var controllers = ApiAssembly.GetTypes()
+            .Where(type => type.IsClass &&
+                           type.Name.EndsWith("Controller", StringComparison.Ordinal) &&
+                           type.Namespace == "PilotageForfaits.Api.Controleurs")
+            .ToArray();
+
+        Assert.NotEmpty(controllers);
+        foreach (var controller in controllers)
+        {
+            var constructors = controller.GetConstructors();
+            Assert.Single(constructors);
+            var parameters = constructors[0].GetParameters();
+            Assert.Single(parameters);
+            Assert.Equal(typeof(IDispatcher), parameters[0].ParameterType);
+        }
     }
 
     [Fact]
