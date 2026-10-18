@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Handlers;
-using PilotageForfaits.Application.Commun;
+using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Contracts.Brouillons;
 
 namespace PilotageForfaits.Application.Brouillons;
