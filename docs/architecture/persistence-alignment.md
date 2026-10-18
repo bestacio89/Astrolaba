@@ -20,7 +20,7 @@ Application and Domain references. Persistence ports must therefore live in an
 application-facing abstraction boundary (or a dedicated persistence-contract
 assembly), not be added to API Contracts at the cost of reversing that dependency rule.
 
-The first Franz integration slice now uses Franz.Common.EntityFramework 2.3.0: PilotageDbContext inherits DbContextBase, and DI registers AddUnitOfWork<PilotageDbContext>(). Astrolaba's domain Entite hierarchy does not implement Franz's IEntity<TKey> contract. Therefore Franz's IEntity-specific auditing and soft-delete query filters do not currently apply to Astrolaba entities. The generic entity repository registration is not used because it does not provide the query shapes needed by Astrolaba's workflows. Adopting Franz's IEntity semantics requires a separately reviewed domain migration.
+The current migration branch now references Franz.Common.Business 2.3.0 directly from Domain and Application. Astrolaba's Entite derives from Franz Entity<Guid>, so every persisted domain entity implements IEntity<Guid> and inherits framework auditing/soft-delete metadata while retaining the Astrolaba Version concurrency token. Infrastructure registers DbContextBase, AddUnitOfWork<PilotageDbContext>(), AddEntityRepositories<PilotageDbContext>(), and Franz's command PersistenceBehavior. A CurrentUserService adapter supplies the authenticated external identity for audit fields. The application uses Franz's IEntityRepository<Projet, Guid> for the archive/restore tracked lookup and commits through the shared unit of work.
 
 Astrolaba currently exposes IContexteDonnees with EF Core DbSet<T> properties.
 Application services use EF query composition directly, so replacing the context
@@ -30,28 +30,23 @@ with repositories is a behavioral migration, not a mechanical rename.
 
 1. **Lock down persistence invariants.** Add model-level tests for optimistic
    concurrency tokens, no cascade deletes, decimal precision, and project ownership.
-2. **Introduce the Franz persistence foundation.** Done in the initial integration slice:
-   pin Franz.Common.EntityFramework 2.3.0, derive PilotageDbContext from DbContextBase,
-   and register the explicit unit of work. Preserve Astrolaba's SaveChangesAsync versioning,
-   length validation, SQL Server provider, and retry policy. Do not enable the mediator
-   persistence pipeline until atomicity, rollback, and save behavior are covered by tests.
-3. **Define persistence ports.** Started: IProjetRepository lives in Application.Abstractions,
-   outside API Contracts, and exposes a tracked project lookup without leaking EF Core.
-4. **Implement repositories.** Started with ProjetRepository in Infrastructure. The archive/restore
-   workflow now reads through the repository and commits through Franz IUnitOfWork; other project
-   and application workflows remain on the compatibility seam. Keep EF-specific includes,
-   filtering, and persistence details in Infrastructure; avoid generic repositories that hide
-   aggregate-specific queries or force loading entire tables.
+2. **Introduce the Franz persistence foundation.** Done: pin Franz.Common.EntityFramework 2.3.0, derive PilotageDbContext from DbContextBase, register the unit of work and command persistence behavior, and preserve Astrolaba's Version concurrency token, SQL Server provider, retry policy, and restricted foreign keys. The persistence behavior saves after successful commands; it does not provide a transaction around multi-step writes. Those transaction boundaries still require integration coverage.
+3. **Adopt the entity contract and repositories.** Implemented on this branch: all persisted entities inherit Franz Entity<Guid>; generic repositories are registered by Franz's discovery extension; archive/restore uses Franz IEntityRepository and the explicit unit of work. Other application workflows still use IContexteDonnees and must be migrated incrementally. Keep specialized query shapes in focused repositories rather than forcing every query through GetAllAsync.
 5. **Migrate application services incrementally.** Move one cohesive workflow at a
    time, retaining authorization checks, concurrency behavior, calculations, and
    transaction boundaries. Keep IContexteDonnees only as a temporary compatibility
    seam until no callers remain.
-6. **Strengthen verification.** Add repository tests and SQL Server-backed integration
-   coverage for concurrency conflicts, foreign-key/delete behavior, project removal,
-   migrations, and atomic writes. Keep reference-scenario tests unchanged as a
-   business-regression gate.
+6. **Strengthen verification and schema rollout.** Model tests now enforce IEntity inheritance, auditing/filter metadata, repository registration, generated Guid identity, concurrency tokens, restricted deletes, decimal precision, and project ownership. A database migration is a mandatory release gate because Entity<Guid> adds audit columns and soft-delete filters. There are currently no checked-in EF migrations; generate and review the initial migration with the repository's EF tooling before deploying this model to any existing database. Add SQL Server-backed concurrency, soft-delete, hard-delete, and transaction integration tests.
 7. **Remove the legacy seam.** Once all services are migrated, remove direct EF Core
    access from Application and delete IContexteDonnees if it is no longer needed.
+
+## Important persistence semantics
+
+- Franz's DbContextBase soft-deletes entities implementing IEntity<TKey> when EF tracks them as Deleted, and its global query filters hide IsDeleted entities. The application must use this for ordinary deletes.
+- Astrolaba retains one deliberate permanent-delete workflow: removing a project created by mistake, after checking that no operational activity exists. PilotageDbContext handles that explicit operation through dependency-ordered SQL deletes inside the configured execution strategy, bypassing the soft-delete path. The shared unit of work still invokes this behavior at SaveChangesAsync.
+- Franz's generic EntityRepository saves immediately in its CRUD methods. Multi-step application workflows must not call those mutating methods midway through a unit of work; use tracked entities plus the explicit IUnitOfWork commit or a purpose-built repository method that respects the workflow's transaction boundary.
+- The mediator PersistenceBehavior is enabled and saves after successful commands. Existing services still contain explicit SaveChangesAsync calls, so the pipeline can perform a second no-op save. Consolidating writes at the command boundary is follow-up work and must not be conflated with transaction orchestration.
+- Adding the inherited audit properties changes the EF model. Since no EF migration is checked in yet, this branch is not deployable to an existing database until a reviewed migration is generated and applied.
 
 ## Out of scope for this phase
 
