@@ -59,6 +59,16 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Api_must_not_reference_database_provider_or_ef_core_runtime()
+    {
+        var references = ApiAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
+
+        Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
+        Assert.DoesNotContain("Microsoft.Data.SqlClient", references);
+    }
+
+    [Fact]
     public void Api_must_reference_application_directly()
     {
         var references = ApiAssembly.GetReferencedAssemblies()
