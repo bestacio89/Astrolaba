@@ -1,0 +1,57 @@
+# Infrastructure and persistence alignment
+
+## Objective
+
+Align Astrolaba's persistence boundary with the proven patterns in
+[HeroService / Develop_Unity_V1](https://github.com/bestacio89/HeroService/tree/Develop_Unity_V1)
+without copying assumptions that do not fit Astrolaba's application.
+
+Astrolaba's persistence layer must preserve SQL Server, optimistic concurrency,
+restricted deletes, project data integrity, existing authorization, calculations,
+and TSP import/export behavior throughout the migration.
+
+## Architectural differences to preserve deliberately
+
+HeroService uses Franz.Common.EntityFramework, DbContextBase,
+AddUnitOfWork<TDbContext>(), entity repository registration, and repository
+contracts in its Contracts assembly. Astrolaba's API Contracts assembly is
+intentionally transport-only and is guarded by architecture tests against
+Application and Domain references. Persistence ports must therefore live in an
+application-facing abstraction boundary (or a dedicated persistence-contract
+assembly), not be added to API Contracts at the cost of reversing that dependency rule.
+
+Astrolaba currently exposes IContexteDonnees with EF Core DbSet<T> properties.
+Application services use EF query composition directly, so replacing the context
+with repositories is a behavioral migration, not a mechanical rename.
+
+## Incremental sequence
+
+1. **Lock down persistence invariants.** Add model-level tests for optimistic
+   concurrency tokens, no cascade deletes, decimal precision, and project ownership.
+2. **Introduce the Franz persistence foundation.** Confirm the exact Franz EF package
+   APIs and transaction semantics, then adapt PilotageDbContext and DI.
+   Preserve the existing SaveChangesAsync versioning and length validation.
+   Do not enable a mediator transaction pipeline until it is proven to share the same
+   EF Core transaction and unit-of-work.
+3. **Define persistence ports.** Introduce repository contracts outside API Contracts,
+   starting with focused aggregates and query shapes required by current use cases.
+4. **Implement repositories.** Keep EF-specific includes, filtering, and persistence
+   details in Infrastructure; avoid generic repositories that hide aggregate-specific
+   queries or force loading entire tables.
+5. **Migrate application services incrementally.** Move one cohesive workflow at a
+   time, retaining authorization checks, concurrency behavior, calculations, and
+   transaction boundaries. Keep IContexteDonnees only as a temporary compatibility
+   seam until no callers remain.
+6. **Strengthen verification.** Add repository tests and SQL Server-backed integration
+   coverage for concurrency conflicts, foreign-key/delete behavior, project removal,
+   migrations, and atomic writes. Keep reference-scenario tests unchanged as a
+   business-regression gate.
+7. **Remove the legacy seam.** Once all services are migrated, remove direct EF Core
+   access from Application and delete IContexteDonnees if it is no longer needed.
+
+## Out of scope for this phase
+
+- Changing the database provider or schema without an explicit migration.
+- Enabling the Franz transaction pipeline before transaction behavior is tested.
+- Changing domain rules, calculations, authorization, or TSP payload behavior.
+- Deployment infrastructure changes.
