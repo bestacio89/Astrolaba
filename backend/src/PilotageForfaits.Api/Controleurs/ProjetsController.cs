@@ -1,8 +1,8 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Import;
 using PilotageForfaits.Application.Projets;
+using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Domain.Commun;
 
 namespace PilotageForfaits.Api.Controleurs;
@@ -79,26 +79,3 @@ public sealed class ProjetsController(ProjetsService projets, ImportTspService i
     }
 }
 
-/// <summary>Formulaire « Créer un projet vide ». Les champs marqués [Required] sont obligatoires.</summary>
-public sealed class CreerProjetVideRequete
-{
-    [Required(ErrorMessage = "Le client est obligatoire."), MaxLength(200)]
-    public string? Client { get; set; }
-
-    [Required(ErrorMessage = "Le nom du projet est obligatoire."), MaxLength(200)]
-    public string? Nom { get; set; }
-
-    [MaxLength(100)]
-    public string? Reference { get; set; }
-
-    [Required(ErrorMessage = "La date de début est obligatoire.")]
-    public DateOnly? Debut { get; set; }
-
-    [Required(ErrorMessage = "La fin contractuelle est obligatoire.")]
-    public DateOnly? FinContractuelle { get; set; }
-
-    [MaxLength(50)]
-    public string? TypeContrat { get; set; }
-}
-
-public sealed record ProjetCreeReponse(Guid Id);

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
+using PilotageForfaits.Contracts.Projets;
 using Xunit;
 
 namespace PilotageForfaits.Architecture.Tests;
@@ -8,9 +9,29 @@ namespace PilotageForfaits.Architecture.Tests;
 public sealed class LayerDependencyTests
 {
     private static readonly Assembly ApiAssembly = typeof(ProjetsController).Assembly;
+    private static readonly Assembly ContractsAssembly = typeof(CreerProjetVideRequete).Assembly;
     private static readonly Assembly ApplicationAssembly = typeof(PilotageForfaits.Application.DependencyInjection).Assembly;
     private static readonly Assembly DomainAssembly = typeof(PilotageForfaits.Domain.Entites.Projet).Assembly;
     private static readonly Assembly InfrastructureAssembly = typeof(PilotageForfaits.Infrastructure.DependencyInjection).Assembly;
+
+    [Fact]
+    public void Contracts_must_not_reference_application_or_runtime_layers()
+    {
+        AssertNoProjectReferences(ContractsAssembly,
+            "PilotageForfaits.Api",
+            "PilotageForfaits.Application",
+            "PilotageForfaits.Domain",
+            "PilotageForfaits.Infrastructure");
+    }
+
+    [Fact]
+    public void Api_must_reference_the_contracts_boundary()
+    {
+        var references = ApiAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
+
+        Assert.Contains("PilotageForfaits.Contracts", references);
+    }
 
     [Fact]
     public void Domain_must_not_reference_outer_application_layers()
