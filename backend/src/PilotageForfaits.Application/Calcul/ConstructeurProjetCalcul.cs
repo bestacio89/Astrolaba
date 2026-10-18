@@ -1,5 +1,4 @@
 using System.Globalization;
-using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Domain.Calcul;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
