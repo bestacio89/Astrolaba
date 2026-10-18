@@ -1,3 +1,4 @@
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Import;
@@ -11,7 +12,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/projets")]
-public sealed class ProjetsController(ProjetsService projets, ImportTspService import) : ControllerBase
+public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService projets, ImportTspService import) : ControllerBase
 {
     /// <summary>Taille maximale d'un TSP (20 Mo).</summary>
     public const long TailleMaxTsp = 20 * 1024 * 1024;
@@ -24,7 +25,7 @@ public sealed class ProjetsController(ProjetsService projets, ImportTspService i
     [HttpPut("{id:guid}/archivage")]
     public async Task<IActionResult> Archiver(Guid id, ArchivageCommande commande, CancellationToken annulation)
     {
-        await projets.ArchiverAsync(id, commande, annulation);
+        await dispatcher.SendAsync(new ArchiverProjetCommand(id, commande.Archive), annulation);
         return NoContent();
     }
 
