@@ -27,7 +27,7 @@ internal sealed class InitialiseurBaseDeDeveloppement(
                     "LE MODÈLE DE DONNÉES A CHANGÉ DEPUIS LA DERNIÈRE MIGRATION : la base n'est pas mise à jour. Arrêtez l'API (Ctrl+C), puis depuis le dossier du dépôt : " +
                     ".\\scripts\\creer-migration.ps1 -Nom <NomDuChangement> (Windows) ou ./scripts/creer-migration.sh <NomDuChangement>, et relancez l'API " +
                     "(README, « Faire évoluer la base »).");
-                return;
+                throw new InvalidOperationException("The EF Core model has pending changes without a reviewed migration.");
             }
 
             await db.Database.MigrateAsync(annulation);
