@@ -113,6 +113,7 @@ internal sealed class SaisieDonneesPersistence(PilotageDbContext db) : ISaisieDo
         db.MisesAJour.Where(x => x.TacheId == tacheId).ToListAsync(annulation);
 
     public void SupprimerMisesAJour(IEnumerable<MiseAJourTache> misesAJour) => db.MisesAJour.RemoveRange(misesAJour);
+    public void AjouterMiseAJour(MiseAJourTache miseAJour) => db.MisesAJour.Add(miseAJour);
 
     public Task<List<ActionProjet>> ListerActionsTacheAsync(Guid tacheId, CancellationToken annulation) =>
         db.Actions.Where(x => x.TacheId == tacheId).ToListAsync(annulation);
