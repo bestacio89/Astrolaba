@@ -10,7 +10,8 @@ Migrate Astrolaba application use cases to Franz Mediator commands and queries w
 - [x] Move project response DTOs to `PilotageForfaits.Contracts` and migrate project queries (list, detail).
 - [x] Dispatch project lifecycle commands (create, archive/restore, delete) through Franz Mediator.
 - [x] Dispatch TSP project import and read-only import analysis through Franz Mediator.
-- [ ] Migrate remaining draft workflows (read, save, export).
+- [ ] Migrate remaining draft workflows (read, save).
+- [x] Dispatch draft export and project COPIL/COPROJ exports through Franz Mediator.
 - [x] Dispatch draft list, create, import, delete, co-editor, and launch through Franz Mediator.
 - [ ] Migrate TSP import analysis and import workflows.
 - [ ] Inventory and migrate the remaining application services, including task tracking, calculations, settings, milestones, and exports.
