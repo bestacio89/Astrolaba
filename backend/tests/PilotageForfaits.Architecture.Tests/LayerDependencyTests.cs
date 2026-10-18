@@ -166,6 +166,15 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Register_workflows_must_use_the_persistence_port()
+    {
+        var constructor = Assert.Single(typeof(RegistresService).GetConstructors());
+        Assert.Contains(
+            constructor.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IRegistresPersistence));
+    }
+
+    [Fact]
     public void Infrastructure_must_not_reference_api()
     {
         AssertNoProjectReferences(InfrastructureAssembly, "PilotageForfaits.Api");
