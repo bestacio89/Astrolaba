@@ -113,12 +113,12 @@ public sealed class SqlServerPersistenceIntegrationTests
     {
         await WithFreshDatabaseAsync(async connectionString =>
         {
-            var userId = Guid.NewGuid();
+            Guid userId;
             await using (var context = CreateContext(connectionString))
             {
                 await using var transaction = await context.Database.BeginTransactionAsync();
                 var user = CreateUser("Rollback");
-                user.Id = userId;
+                userId = user.Id;
                 context.Utilisateurs.Add(user);
                 await context.SaveChangesAsync();
                 await transaction.RollbackAsync();
