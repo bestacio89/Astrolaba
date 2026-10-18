@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Calcul;
 using PilotageForfaits.Domain.Commun;
@@ -47,7 +46,7 @@ public sealed class PerimetreService(SaisieOutils o)
         Decision? decision = null;
         if (c.EnregistrerDecision)
         {
-            var references = await o.Db.Decisions.Where(x => x.ProjetId == projetId).Select(x => x.Reference).ToListAsync(a);
+            var references = await o.Persistence.ListerReferencesDecisionsAsync(projetId, a);
             var libelle = $"Annulation de la tâche « {tc.Label} »{(avenant ? " (avenant de réduction)" : "")} — {motif}";
             decision = new Decision
             {
@@ -56,9 +55,9 @@ public sealed class PerimetreService(SaisieOutils o)
                 Statut = StatutDecision.Validee, CreeeParId = u.Id,
                 Commentaire = $"{Formats.Jh(jh)} JH annulés, coût évité {Formats.Euros(cout)}{(avenant ? $", CA −{Formats.Euros(caReduction)}" : "")}",
             };
-            o.Db.Decisions.Add(decision);
+            o.Persistence.AjouterDecision(decision);
         }
-        o.Db.Evolutions.Add(new EvolutionPerimetre
+        o.Persistence.AjouterEvolution(new EvolutionPerimetre
         {
             ProjetId = projetId, TacheId = t.Id, Nature = NatureEvolution.Annulation, Le = le, ParId = u.Id, Motif = motif,
             AvenantReduction = avenant, JoursHomme = jh, DecisionId = decision?.Id,
@@ -75,7 +74,7 @@ public sealed class PerimetreService(SaisieOutils o)
         var u = await o.ExigerChefAsync(projetId, a);
         var t = await o.TacheAsync(projetId, uid, a);
         if (!t.EstAnnulee) throw new RegleMetierException("Cette tâche n’est pas annulée.");
-        o.Db.Evolutions.Add(new EvolutionPerimetre
+        o.Persistence.AjouterEvolution(new EvolutionPerimetre
         {
             ProjetId = projetId, TacheId = t.Id, Nature = NatureEvolution.Retablissement, Le = ProchainHorodatage(t), ParId = u.Id,
             Motif = "Rétablissement",
@@ -92,7 +91,7 @@ public sealed class PerimetreService(SaisieOutils o)
         var u = await o.ExigerChefAsync(projetId, a);
         var label = string.Join(' ', (c.Label ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         if (label.Length == 0) throw new RegleMetierException("Saisissez l’intitulé de la tâche.");
-        var profils = await o.Db.Profils.Where(p => p.ProjetId == projetId).OrderBy(p => p.Rang).ToListAsync(a);
+        var profils = await o.Persistence.ListerProfilsProjetAsync(projetId, a);
         var charges = new List<(ProfilProjet Profil, decimal Jh)>();
         foreach (var ch in c.Charges ?? new List<ChargeNouvelleTacheCommande>())
         {
@@ -121,14 +120,14 @@ public sealed class PerimetreService(SaisieOutils o)
             profil.AjouteLe = maintenant;
             profil.AjouteParId = u.Id;
             profil.MotifAjout = motif;
-            o.Db.Profils.Add(profil);
+            o.Persistence.AjouterProfil(profil);
             profils.Add(profil);
         }
 
         var axe = SaisieOutils.Nettoyer(c.Axe);
         var phase = SaisieOutils.Nettoyer(c.Phase).ToUpperInvariant();
         var lot = SaisieOutils.Nettoyer(c.Lot);
-        var toutes = await o.Db.Taches.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var toutes = await o.Persistence.ListerTachesProjetAsync(projetId, a);
         var reperes = toutes.Select(x => x.Repere).ToList();
         var numero = 1 + reperes.Where(r => r.StartsWith('a')).Select(r => int.TryParse(r[1..], out var n) ? n : 0).DefaultIfEmpty(0).Max();
         var tache = new Tache
@@ -138,24 +137,24 @@ public sealed class PerimetreService(SaisieOutils o)
             Hypothese = SaisieOutils.Nettoyer(c.Hypothese), DebutPrevu = c.Debut, FinPrevue = c.Fin,
         };
         tache.Position = await PositionAsync(projetId, toutes, c.Apres, axe, phase, lot, a);
-        if (axe.Length > 0) tache.AxeId = (await o.Db.Axes.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == axe, a))?.Id;
-        if (phase.Length > 0) tache.PhaseId = (await o.Db.Phases.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == phase, a))?.Id;
+        if (axe.Length > 0) tache.AxeId = await o.Persistence.ObtenirAxeIdAsync(projetId, axe, a);
+        if (phase.Length > 0) tache.PhaseId = await o.Persistence.ObtenirPhaseIdAsync(projetId, phase, a);
         var typeCode = SaisieOutils.Nettoyer(c.Type);
         if (typeCode.Length > 0)
         {
-            var type = await o.Db.TypesTache.FirstOrDefaultAsync(x => x.ProjetId == projetId && x.Code == typeCode, a)
+            var type = await o.Persistence.ObtenirTypeTacheAsync(projetId, typeCode, a)
                 ?? throw new IntrouvableException("Type de tâche introuvable.");
             tache.TypeSaisi = true;
             tache.TypeTacheId = type.Id;
         }
-        o.Db.Taches.Add(tache);
+        o.Persistence.AjouterTache(tache);
         foreach (var (profil, jh) in charges)
-            o.Db.ChargesTache.Add(new ChargeTache
+            o.Persistence.AjouterChargeTache(new ChargeTache
             {
                 ProjetId = projetId, TacheId = tache.Id, ProfilProjetId = profil.Id, ChargeAjoutee = jh,
                 MotifAjout = motif, AjouteeLe = maintenant, AjouteeParId = u.Id,
             });
-        o.Db.Evolutions.Add(new EvolutionPerimetre
+        o.Persistence.AjouterEvolution(new EvolutionPerimetre
         {
             ProjetId = projetId, TacheId = tache.Id, Nature = NatureEvolution.NouvelleTache, Le = maintenant, ParId = u.Id, Motif = motif,
             JoursHomme = charges.Sum(x => x.Jh),
@@ -163,7 +162,7 @@ public sealed class PerimetreService(SaisieOutils o)
         // la date saisie devient la date planifiée de l'atelier (type choisi ou détecté d'après l'intitulé)
         var typeEffectif = typeCode.Length > 0 ? typeCode : ReferentielsMetier.DetecterType(label, "");
         if (typeEffectif == ReferentielsMetier.TypeAtelier && c.Debut is not null)
-            o.Db.Ateliers.Add(new Atelier { ProjetId = projetId, TacheId = tache.Id, DatePlanifiee = c.Debut });
+            o.Persistence.AjouterAtelier(new Atelier { ProjetId = projetId, TacheId = tache.Id, DatePlanifiee = c.Debut });
 
         o.Noter(projetId, u, "Tâche", tache.Id, "nouvelle tâche", null, label);
         var message = $"Tâche « {label} » créée ({Formats.Jh(charges.Sum(x => x.Jh))} JH non facturés).";
@@ -177,20 +176,20 @@ public sealed class PerimetreService(SaisieOutils o)
         var t = await o.TacheAsync(projetId, uid, a);
         if (t.Origine != OrigineElement.Ajout)
             throw new RegleMetierException("Une tâche du TSP ne se supprime pas : annulez-la (son consommé est conservé).");
-        o.Db.Consommes.RemoveRange(await o.Db.Consommes.Where(x => x.TacheId == t.Id).ToListAsync(a));
-        o.Db.ChargesTache.RemoveRange(await o.Db.ChargesTache.Where(x => x.TacheId == t.Id).ToListAsync(a));
-        o.Db.Evolutions.RemoveRange(t.Evolutions);
-        var atelier = await o.Db.Ateliers.Include(x => x.Destinataires).FirstOrDefaultAsync(x => x.TacheId == t.Id, a);
+        o.Persistence.SupprimerConsommes(await o.Persistence.ListerConsommesTacheAsync(t.Id, a));
+        o.Persistence.SupprimerChargesTache(await o.Persistence.ListerChargesTacheAsync(t.Id, a));
+        o.Persistence.SupprimerEvolutions(t.Evolutions);
+        var atelier = await o.Persistence.ObtenirAtelierAvecDestinatairesAsync(t.Id, a);
         if (atelier is not null)
         {
-            o.Db.Destinataires.RemoveRange(atelier.Destinataires);
-            o.Db.Ateliers.Remove(atelier);
+            o.Persistence.SupprimerDestinataires(atelier.Destinataires);
+            o.Persistence.SupprimerAtelier(atelier);
         }
-        o.Db.Livrables.RemoveRange(await o.Db.Livrables.Where(x => x.TacheId == t.Id).ToListAsync(a));
-        o.Db.LignesPlanReference.RemoveRange(await o.Db.LignesPlanReference.Where(x => x.TacheId == t.Id).ToListAsync(a));
-        o.Db.MisesAJour.RemoveRange(await o.Db.MisesAJour.Where(x => x.TacheId == t.Id).ToListAsync(a));
-        foreach (var action in await o.Db.Actions.Where(x => x.TacheId == t.Id).ToListAsync(a)) action.TacheId = null;
-        o.Db.Taches.Remove(t);
+        o.Persistence.SupprimerLivrables(await o.Persistence.ListerLivrablesTacheAsync(t.Id, a));
+        o.Persistence.SupprimerLignesPlanReference(await o.Persistence.ListerLignesPlanReferenceTacheAsync(t.Id, a));
+        o.Persistence.SupprimerMisesAJour(await o.Persistence.ListerMisesAJourTacheAsync(t.Id, a));
+        foreach (var action in await o.Persistence.ListerActionsTacheAsync(t.Id, a)) action.TacheId = null;
+        o.Persistence.SupprimerTache(t);
         o.Noter(projetId, u, "Tâche", t.Id, "suppression d’une tâche ajoutée", SaisiesTachesService.Libelle(t), null);
         return await o.TerminerAsync(projetId, new List<MessageDto> { new("Tâche ajoutée supprimée.", "succes") }, a);
     }
@@ -203,8 +202,8 @@ public sealed class PerimetreService(SaisieOutils o)
         var u = await o.ExigerChefAsync(projetId, a);
         var t = await o.TacheAsync(projetId, uid, a);
         t.VerifierModifiable();
-        var profils = await o.Db.Profils.Where(p => p.ProjetId == projetId).OrderBy(p => p.Rang).ToListAsync(a);
-        var chargesTache = await o.Db.ChargesTache.Where(x => x.TacheId == t.Id).ToListAsync(a);
+        var profils = await o.Persistence.ListerProfilsProjetAsync(projetId, a);
+        var chargesTache = await o.Persistence.ListerChargesTacheAsync(t.Id, a);
         ProfilProjet profil;
         if (c.NouveauProfil is not null) profil = LireNouveauProfil(c.NouveauProfil, profils);
         else
@@ -225,19 +224,19 @@ public sealed class PerimetreService(SaisieOutils o)
             profil.AjouteLe = maintenant;
             profil.AjouteParId = u.Id;
             profil.MotifAjout = motif;
-            o.Db.Profils.Add(profil);
+            o.Persistence.AjouterProfil(profil);
         }
         var charge = chargesTache.FirstOrDefault(x => x.ProfilProjetId == profil.Id);
         if (charge is null)
         {
             charge = new ChargeTache { ProjetId = projetId, TacheId = t.Id, ProfilProjetId = profil.Id };
-            o.Db.ChargesTache.Add(charge);
+            o.Persistence.AjouterChargeTache(charge);
         }
         charge.ChargeAjoutee = Math.Round(charge.ChargeAjoutee + c.Jh, 2, MidpointRounding.AwayFromZero);
         charge.MotifAjout = motif;
         charge.AjouteeLe = maintenant;
         charge.AjouteeParId = u.Id;
-        o.Db.Evolutions.Add(new EvolutionPerimetre
+        o.Persistence.AjouterEvolution(new EvolutionPerimetre
         {
             ProjetId = projetId, TacheId = t.Id, ProfilProjetId = profil.Id, Nature = NatureEvolution.AjoutCharge, Le = maintenant, ParId = u.Id,
             Motif = motif, JoursHomme = c.Jh,
@@ -254,7 +253,7 @@ public sealed class PerimetreService(SaisieOutils o)
         var t = await o.TacheAsync(projetId, uid, a);
         t.VerifierModifiable();
         if (!(c.Jh > 0)) throw new RegleMetierException("Saisissez une charge positive. Pour retirer l’ajout, utilisez ✕.");
-        var charge = await o.Db.ChargesTache.FirstOrDefaultAsync(x => x.TacheId == t.Id && x.ProfilProjetId == profilId, a);
+        var charge = await o.Persistence.ObtenirChargeTacheAsync(t.Id, profilId, a);
         if (charge is null || charge.ChargeAjoutee == 0) throw new IntrouvableException("Aucune charge ajoutée pour ce profil sur cette tâche.");
         var ancien = charge.ChargeAjoutee;
         await VerifierPasDeChargeNegativeAsync(projetId, t, profilId, ancien - Math.Round(c.Jh, 2, MidpointRounding.AwayFromZero), a);
@@ -268,14 +267,14 @@ public sealed class PerimetreService(SaisieOutils o)
     {
         var u = await o.ExigerChefAsync(projetId, a);
         var t = await o.TacheAsync(projetId, uid, a);
-        var charges = await o.Db.ChargesTache.Where(x => x.TacheId == t.Id).ToListAsync(a);
+        var charges = await o.Persistence.ListerChargesTacheAsync(t.Id, a);
         var charge = charges.FirstOrDefault(x => x.ProfilProjetId == profilId);
         if (charge is null || charge.ChargeAjoutee == 0) throw new IntrouvableException("Aucune charge ajoutée pour ce profil sur cette tâche.");
         if (t.Origine == OrigineElement.Ajout && charges.Count(x => x.ChargeAjoutee > 0) <= 1)
             throw new RegleMetierException("Une tâche ajoutée garde au moins un profil : supprimez la tâche si elle n’a plus lieu d’être.");
         await VerifierPasDeChargeNegativeAsync(projetId, t, profilId, charge.ChargeAjoutee, a);
         var ancien = charge.ChargeAjoutee;
-        if (charge.ChargeVendue == 0) o.Db.ChargesTache.Remove(charge);
+        if (charge.ChargeVendue == 0) o.Persistence.SupprimerChargeTache(charge);
         else
         {
             charge.ChargeAjoutee = 0;
@@ -299,7 +298,7 @@ public sealed class PerimetreService(SaisieOutils o)
         var u = await o.ExigerChefAsync(projetId, a);
         var t = await o.TacheAsync(projetId, uid, a);
         t.VerifierModifiable();
-        var profils = await o.Db.Profils.Where(p => p.ProjetId == projetId).OrderBy(p => p.Rang).ToListAsync(a);
+        var profils = await o.Persistence.ListerProfilsProjetAsync(projetId, a);
         var iDe = profils.FindIndex(p => p.Id == c.DeProfilId);
         if (iDe < 0) throw new IntrouvableException("Profil introuvable.");
         var source = profils[iDe];
@@ -346,9 +345,9 @@ public sealed class PerimetreService(SaisieOutils o)
             cible.AjouteLe = maintenant;
             cible.AjouteParId = u.Id;
             cible.MotifAjout = motif;
-            o.Db.Profils.Add(cible);
+            o.Persistence.AjouterProfil(cible);
         }
-        o.Db.Evolutions.Add(new EvolutionPerimetre
+        o.Persistence.AjouterEvolution(new EvolutionPerimetre
         {
             ProjetId = projetId, TacheId = t.Id, ProfilSourceId = source.Id, ProfilProjetId = cible.Id, Nature = NatureEvolution.Reaffectation,
             Le = maintenant, ParId = u.Id, Motif = motif, JoursHomme = jh,
@@ -370,14 +369,14 @@ public sealed class PerimetreService(SaisieOutils o)
         t.VerifierModifiable();
         var e = t.Evolutions.FirstOrDefault(x => x.Id == reaffectationId && x.Nature == NatureEvolution.Reaffectation)
             ?? throw new IntrouvableException("Réaffectation introuvable.");
-        var source = e.ProfilSourceId is { } de ? await o.Db.Profils.FirstOrDefaultAsync(p => p.Id == de, a) : null;
+        var source = e.ProfilSourceId is { } de ? await o.Persistence.ObtenirProfilParIdAsync(de, a) : null;
         // la charge reçue a pu être réaffectée à son tour : l'annuler rendrait la charge de cette personne négative
-        var profils = await o.Db.Profils.Where(p => p.ProjetId == projetId).OrderBy(p => p.Rang).ToListAsync(a);
+        var profils = await o.Persistence.ListerProfilsProjetAsync(projetId, a);
         var iVers = profils.FindIndex(p => p.Id == e.ProfilProjetId);
         var tc = (await o.CalculerAsync(projetId, a)).Tasks.FirstOrDefault(x => x.Uid == uid);
         if (tc is not null && iVers >= 0 && iVers < tc.Charges.Count && tc.Charges[iVers] - e.JoursHomme < -0.001m)
             throw new RegleMetierException("Cette charge a été réaffectée à son tour : annulez d’abord la réaffectation faite depuis cette personne.");
-        o.Db.Evolutions.Remove(e);
+        o.Persistence.SupprimerEvolution(e);
         o.Noter(projetId, u, "Tâche", t.Id, $"{SaisiesTachesService.Libelle(t)} · réaffectation annulée", $"{Formats.Jh(e.JoursHomme)} JH", e.Motif);
         var message = source is null ? "Réaffectation annulée." : $"Réaffectation annulée : la charge revient à {source.Nom}{(source.Collaborateur.Length > 0 ? $" — {source.Collaborateur}" : "")}.";
         return await o.TerminerAsync(projetId, new List<MessageDto> { new(message, "succes") }, a);
@@ -390,7 +389,7 @@ public sealed class PerimetreService(SaisieOutils o)
     private async Task VerifierPasDeChargeNegativeAsync(Guid projetId, Tache t, Guid profilId, decimal retrait, CancellationToken a)
     {
         if (retrait <= 0 || !t.Evolutions.Any(e => e.Nature == NatureEvolution.Reaffectation && e.ProfilSourceId == profilId)) return;
-        var profils = await o.Db.Profils.Where(p => p.ProjetId == projetId).OrderBy(p => p.Rang).ToListAsync(a);
+        var profils = await o.Persistence.ListerProfilsProjetAsync(projetId, a);
         var i = profils.FindIndex(p => p.Id == profilId);
         var tc = (await o.CalculerAsync(projetId, a)).Tasks.FirstOrDefault(x => x.Uid == t.Repere);
         if (tc is not null && i >= 0 && i < tc.Charges.Count && tc.Charges[i] - retrait < -0.001m)
@@ -439,9 +438,9 @@ public sealed class PerimetreService(SaisieOutils o)
             ancre = ordonnees.FirstOrDefault(x => x.Repere == apres) ?? throw new IntrouvableException("Tâche d’ancrage introuvable.");
         else
         {
-            var projet = await o.Db.Projets.AsNoTracking().FirstAsync(p => p.Id == projetId, a);
-            var axes = await o.Db.Axes.AsNoTracking().Where(x => x.ProjetId == projetId).ToDictionaryAsync(x => x.Id, x => x.Code, a);
-            var phases = await o.Db.Phases.AsNoTracking().Where(x => x.ProjetId == projetId).ToDictionaryAsync(x => x.Id, x => x.Code, a);
+            var projet = await o.Persistence.ObtenirProjetAsync(projetId, a);
+            var axes = await o.Persistence.ListerCodesAxesAsync(projetId, a);
+            var phases = await o.Persistence.ListerCodesPhasesAsync(projetId, a);
             string Groupe(Tache x) => projet.Parametres.Regroupement switch
             {
                 Regroupement.Phase => x.PhaseId is { } ph && phases.TryGetValue(ph, out var code) && code.Length > 0 ? code : x.PhaseTsp,
