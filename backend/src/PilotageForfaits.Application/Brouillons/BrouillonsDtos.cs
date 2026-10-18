@@ -7,20 +7,6 @@ namespace PilotageForfaits.Application.Brouillons;
 // Objets échangés avec l'interface pour les brouillons de projet. Un brouillon n'est ouvert qu'à son auteur et au co-rédacteur
 // qu'il invite, qui ont tous deux besoin des prix pour rédiger le TSP : les montants sont donc toujours envoyés.
 
-/// <summary>Un brouillon dans la liste « Mes brouillons ».</summary>
-public sealed record BrouillonResumeDto(
-    Guid Id,
-    string Client,
-    string Nom,
-    string? Reference,
-    string Origine,
-    string OrigineCode,
-    DateTimeOffset ModifieLe,
-    string? ModifiePar,
-    string Createur,
-    string? CoRedacteur,
-    bool EstCreateur);
-
 /// <summary>Un brouillon ouvert : le TSP en cours de rédaction et son analyse.</summary>
 public sealed record BrouillonDto(
     Guid Id,
@@ -37,8 +23,6 @@ public sealed record BrouillonDto(
     string? ModifiePar,
     AnalyseBrouillonDto Analyse,
     SuggestionsDto Suggestions);
-
-public sealed record PersonneDto(Guid Id, string NomComplet, string Email);
 
 /// <summary>Valeurs proposées pendant la saisie (on peut toujours en saisir d'autres).</summary>
 public sealed record SuggestionsDto(IReadOnlyList<string> Entites, IReadOnlyList<string> Profils, IReadOnlyList<string> TypesAchat, IReadOnlyList<string> TypesContrat);
@@ -94,5 +78,3 @@ public sealed record ControleDto(string Cle, string Niveau, string Titre, string
 /// <summary>État de chaque rubrique : « ok », « conseil », « bloquant » ou « vide ».</summary>
 public sealed record RubriquesDto(string Fiche, string Profils, string Workload, string Planning, string Echeancier, string Depenses);
 
-/// <summary>Co-rédacteur après invitation ou retrait, et nouvelle version du brouillon (à reprendre par l'écran).</summary>
-public sealed record CoRedacteurReponse(PersonneDto? CoRedacteur, int Version);
