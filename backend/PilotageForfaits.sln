@@ -23,6 +23,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PilotageForfaits.Api.Tests"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PilotageForfaits.Architecture.Tests", "tests\PilotageForfaits.Architecture.Tests\PilotageForfaits.Architecture.Tests.csproj", "{B9E29B1A-3F6A-4D7B-9C7E-2F8B5D14C63A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PilotageForfaits.Application.Tests", "tests\PilotageForfaits.Application.Tests\PilotageForfaits.Application.Tests.csproj", "{D14B2BA2-6B45-4F4A-8D2A-1E3B76F8C901}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,10 @@ Global
 		{B9E29B1A-3F6A-4D7B-9C7E-2F8B5D14C63A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B9E29B1A-3F6A-4D7B-9C7E-2F8B5D14C63A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B9E29B1A-3F6A-4D7B-9C7E-2F8B5D14C63A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D14B2BA2-6B45-4F4A-8D2A-1E3B76F8C901}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D14B2BA2-6B45-4F4A-8D2A-1E3B76F8C901}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D14B2BA2-6B45-4F4A-8D2A-1E3B76F8C901}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D14B2BA2-6B45-4F4A-8D2A-1E3B76F8C901}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,5 +80,6 @@ Global
 		{6802B0EE-1D55-5026-88EE-6AEDDF18D8C2} = {93AC44F5-20B1-5A8D-80EF-24CEE0706AEA}
 		{32A017F0-F7E5-5CFD-9D1E-1AFCE8166AA0} = {93AC44F5-20B1-5A8D-80EF-24CEE0706AEA}
 		{B9E29B1A-3F6A-4D7B-9C7E-2F8B5D14C63A} = {93AC44F5-20B1-5A8D-80EF-24CEE0706AEA}
+		{D14B2BA2-6B45-4F4A-8D2A-1E3B76F8C901} = {93AC44F5-20B1-5A8D-80EF-24CEE0706AEA}
 	EndGlobalSection
 EndGlobal
