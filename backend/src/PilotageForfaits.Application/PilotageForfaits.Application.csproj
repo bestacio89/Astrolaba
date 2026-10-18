@@ -8,7 +8,8 @@
     <ProjectReference Include="..\PilotageForfaits.Domain\PilotageForfaits.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Choix assumé : les services utilisent directement les requêtes EF Core (pas de couche « dépôt » en plus). -->
+    <!-- Retained while existing application services are migrated incrementally. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Franz.Common.Mediator" />
   </ItemGroup>
 </Project>
