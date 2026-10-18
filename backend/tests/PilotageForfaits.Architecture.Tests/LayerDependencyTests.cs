@@ -6,6 +6,8 @@ using PilotageForfaits.Api.Controleurs;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Import;
 using PilotageForfaits.Contracts.Import;
+using PilotageForfaits.Contracts.Exports;
+using PilotageForfaits.Application.Suivi;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Application.Projets;
@@ -148,6 +150,12 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(ImporterBrouillonCommandHandler)));
         Assert.True(typeof(ICommandHandler<DefinirCoRedacteurBrouillonCommand, CoRedacteurReponse>)
             .IsAssignableFrom(typeof(DefinirCoRedacteurBrouillonCommandHandler)));
+        Assert.True(typeof(IQueryHandler<ExporterBrouillonQuery, FichierExport>)
+            .IsAssignableFrom(typeof(ExporterBrouillonQueryHandler)));
+        Assert.True(typeof(ICommandHandler<ExporterCopilCommand, FichierExport>)
+            .IsAssignableFrom(typeof(ExporterCopilCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ExporterCoprojCommand, FichierExport>)
+            .IsAssignableFrom(typeof(ExporterCoprojCommandHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
