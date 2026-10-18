@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -9,7 +8,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// Registres du projet : actions, décisions, risques. Saisie directe dans le tableau (comme un Excel), règles du POC :
 /// une ligne vide existante est réutilisée au lieu d'en créer une autre ; progression ⇔ statut pour les actions.
 /// </summary>
-public sealed class RegistresService(SaisieOutils o)
+public sealed class RegistresService(SaisieOutils o, IRegistresPersistence persistence)
 {
     /// <summary>Instances proposées (origine d'une action, instance d'une décision).</summary>
     public static readonly IReadOnlyList<string> Instances = ["COPROJ", "COPIL", "Réunion client", "Interne", "Autre"];
@@ -22,7 +21,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> CreerActionAsync(Guid projetId, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var existantes = await o.Db.Actions.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var existantes = await persistence.ListerActionsAsync(projetId, a);
         var vide = existantes.OrderBy(x => x.Reference, StringComparer.Ordinal).FirstOrDefault(x => string.IsNullOrWhiteSpace(x.Libelle));
         if (vide is not null)
             return await o.TerminerAsync(projetId, new List<MessageDto> { new($"{vide.Reference} est encore sans libellé : complétez-la d’abord.") }, a, vide.Id.ToString());
@@ -32,7 +31,7 @@ public sealed class RegistresService(SaisieOutils o)
             Instance = "COPROJ", CreeeLe = o.Aujourdhui, DateCible = o.Aujourdhui.AddDays(7), Progression = 0, Statut = StatutAction.AFaire,
             Commentaire = "", CreeeParId = u.Id,
         };
-        o.Db.Actions.Add(action);
+        persistence.AjouterAction(action);
         o.Noter(projetId, u, "Action", action.Id, "création", null, action.Reference);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a, action.Id.ToString());
     }
@@ -44,7 +43,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> ModifierActionAsync(Guid projetId, Guid id, ChampCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Actions.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Action introuvable.");
+        var x = await persistence.ChargerActionAsync(projetId, id, a) ?? throw new IntrouvableException("Action introuvable.");
         SaisieOutils.VerifierVersion(x, c.Version, $"L’action {x.Reference}");
         var messages = new List<MessageDto>();
         var v = c.Valeur;
@@ -90,7 +89,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> RestaurerActionAsync(Guid projetId, Guid id, RestaurerActionCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Actions.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Action introuvable.");
+        var x = await persistence.ChargerActionAsync(projetId, id, a) ?? throw new IntrouvableException("Action introuvable.");
         x.Statut = Formats.StatutAction(c.Statut);
         x.Progression = Math.Clamp(c.Progression, 0, 1);
         x.FaiteLe = x.Statut == StatutAction.Fait ? (DateOnly?)(c.FaitLe ?? o.Aujourdhui) : null;
@@ -101,9 +100,9 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> SupprimerActionAsync(Guid projetId, Guid id, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Actions.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Action introuvable.");
-        foreach (var r in await o.Db.Risques.Where(r => r.ActionId == id).ToListAsync(a)) r.ActionId = null;
-        o.Db.Actions.Remove(x);
+        var x = await persistence.ChargerActionAsync(projetId, id, a) ?? throw new IntrouvableException("Action introuvable.");
+        foreach (var r in await persistence.ChargerRisquesParActionAsync(id, a)) r.ActionId = null;
+        persistence.SupprimerAction(x);
         o.Noter(projetId, u, "Action", x.Id, "suppression", $"{x.Reference} {x.Libelle}", null);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
     }
@@ -113,7 +112,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> CreerDecisionAsync(Guid projetId, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var existantes = await o.Db.Decisions.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var existantes = await persistence.ListerDecisionsAsync(projetId, a);
         var vide = existantes.OrderBy(x => x.Reference, StringComparer.Ordinal).FirstOrDefault(x => string.IsNullOrWhiteSpace(x.Libelle));
         if (vide is not null)
             return await o.TerminerAsync(projetId, new List<MessageDto> { new($"{vide.Reference} est encore sans libellé : complétez-la d’abord.") }, a, vide.Id.ToString());
@@ -122,7 +121,7 @@ public sealed class RegistresService(SaisieOutils o)
             ProjetId = projetId, Reference = SaisieOutils.ProchaineReference(existantes.Select(x => x.Reference), "D"), Date = o.Aujourdhui,
             Instance = "COPROJ", Libelle = "", Decideur = "", Impact = "", Statut = StatutDecision.Validee, Commentaire = "", CreeeParId = u.Id,
         };
-        o.Db.Decisions.Add(decision);
+        persistence.AjouterDecision(decision);
         o.Noter(projetId, u, "Décision", decision.Id, "création", null, decision.Reference);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a, decision.Id.ToString());
     }
@@ -130,7 +129,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> ModifierDecisionAsync(Guid projetId, Guid id, ChampCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Decisions.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Décision introuvable.");
+        var x = await persistence.ChargerDecisionAsync(projetId, id, a) ?? throw new IntrouvableException("Décision introuvable.");
         SaisieOutils.VerifierVersion(x, c.Version, $"La décision {x.Reference}");
         var v = c.Valeur;
         switch (c.Champ)
@@ -151,9 +150,9 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> SupprimerDecisionAsync(Guid projetId, Guid id, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Decisions.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Décision introuvable.");
-        foreach (var e in await o.Db.Evolutions.Where(e => e.DecisionId == id).ToListAsync(a)) e.DecisionId = null;
-        o.Db.Decisions.Remove(x);
+        var x = await persistence.ChargerDecisionAsync(projetId, id, a) ?? throw new IntrouvableException("Décision introuvable.");
+        foreach (var e in await persistence.ChargerEvolutionsParDecisionAsync(id, a)) e.DecisionId = null;
+        persistence.SupprimerDecision(x);
         o.Noter(projetId, u, "Décision", x.Id, "suppression", $"{x.Reference} {x.Libelle}", null);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
     }
@@ -163,7 +162,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> CreerRisqueAsync(Guid projetId, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var existants = await o.Db.Risques.Where(x => x.ProjetId == projetId).ToListAsync(a);
+        var existants = await persistence.ListerRisquesAsync(projetId, a);
         var vide = existants.OrderBy(x => x.Reference, StringComparer.Ordinal).FirstOrDefault(x => string.IsNullOrWhiteSpace(x.Libelle));
         if (vide is not null)
             return await o.TerminerAsync(projetId, new List<MessageDto> { new($"{vide.Reference} est encore sans libellé : complétez-le d’abord.") }, a, vide.Id.ToString());
@@ -173,7 +172,7 @@ public sealed class RegistresService(SaisieOutils o)
             Probabilite = ProbabiliteRisque.Moyenne, Impact = ImpactRisque.Moyen, Parade = "", Responsable = "", Statut = StatutRisque.Ouvert,
             Commentaire = "", CreeLe = o.Horloge.Maintenant, CreeParId = u.Id,
         };
-        o.Db.Risques.Add(risque);
+        persistence.AjouterRisque(risque);
         o.Noter(projetId, u, "Risque", risque.Id, "création", null, risque.Reference);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a, risque.Id.ToString());
     }
@@ -181,7 +180,7 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> ModifierRisqueAsync(Guid projetId, Guid id, ChampCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Risques.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Risque introuvable.");
+        var x = await persistence.ChargerRisqueAsync(projetId, id, a) ?? throw new IntrouvableException("Risque introuvable.");
         SaisieOutils.VerifierVersion(x, c.Version, $"Le risque {x.Reference}");
         var v = c.Valeur;
         switch (c.Champ)
@@ -198,7 +197,7 @@ public sealed class RegistresService(SaisieOutils o)
                 else
                 {
                     if (!Guid.TryParse(v, out var actionId)) throw new RegleMetierException("Action invalide : saisie annulée.");
-                    if (!await o.Db.Actions.AnyAsync(y => y.ProjetId == projetId && y.Id == actionId, a)) throw new IntrouvableException("Action introuvable.");
+                    if (!await persistence.ActionExisteAsync(projetId, actionId, a)) throw new IntrouvableException("Action introuvable.");
                     x.ActionId = actionId;
                 }
                 break;
@@ -211,8 +210,8 @@ public sealed class RegistresService(SaisieOutils o)
     public async Task<ResultatSaisieDto> SupprimerRisqueAsync(Guid projetId, Guid id, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.Risques.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Risque introuvable.");
-        o.Db.Risques.Remove(x);
+        var x = await persistence.ChargerRisqueAsync(projetId, id, a) ?? throw new IntrouvableException("Risque introuvable.");
+        persistence.SupprimerRisque(x);
         o.Noter(projetId, u, "Risque", x.Id, "suppression", $"{x.Reference} {x.Libelle}", null);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
     }
