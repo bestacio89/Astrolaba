@@ -7,12 +7,6 @@ using PilotageForfaits.Domain.Entites;
 namespace PilotageForfaits.Application.Projets;
 
 /// <summary>
-/// Projet déjà suivi pour le même forfait. « Visible » : l'utilisateur y a accès (alors on lui dit lequel, et comment le retrouver) ;
-/// sinon on lui dit seulement qu'il existe, sans en révéler le nom.
-/// </summary>
-public sealed record ProjetExistantDto(Guid? Id, string? Libelle, string Statut, bool Archive, bool Visible, string Message);
-
-/// <summary>
 /// Un même forfait n'est jamais suivi deux fois : avant de créer un projet (import d'un TSP, projet vide) ou de changer sa fiche,
 /// on cherche un projet de même identité (voir <see cref="IdentiteProjet"/>), quel que soit son statut — archivé compris :
 /// un projet terminé se restaure, il ne se réimporte pas. Seul un projet supprimé (créé par erreur) libère son identité.

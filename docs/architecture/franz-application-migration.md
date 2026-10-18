@@ -2,23 +2,31 @@
 
 ## Objective
 
-Migrate Astrolaba application use cases to Franz Mediator commands and queries while preserving the existing business rules, authorization boundaries, persistence behavior, and HTTP contracts.
+Migrate Astrolaba application use cases to Franz Mediator commands and queries while preserving business rules, authorization boundaries, persistence behavior, concurrency checks, and HTTP contracts.
 
 ## Migration sequence
 
-- [ ] Establish stable request/response contracts in `PilotageForfaits.Contracts` without introducing a dependency on Application.
-- [ ] Migrate project queries and lifecycle commands (list, detail, create, archive/restore, delete).
-- [ ] Migrate draft workflows (list, create, import, read, save, co-editor, delete, export, launch).
-- [ ] Migrate TSP import analysis and import workflows.
-- [ ] Inventory and migrate the remaining application services, including task tracking, calculations, settings, milestones, and exports.
-- [ ] Update API controllers to dispatch through `IDispatcher`; keep transport-specific concerns such as multipart file handling and HTTP response mapping in the API.
-- [ ] Add handler/unit tests and API integration tests for each migrated use case.
-- [ ] Add architecture tests enforcing the intended Contracts/Application/API dependency direction.
-- [ ] Run the full backend build and test suite in CI and address all regressions.
+- [ ] Complete the Contracts boundary for remaining draft payloads and application response models without introducing a Contracts-to-Application dependency.
+- [x] Move project response DTOs and the TSP import preview DTO into Contracts.
+- [x] Dispatch project list/detail queries, create/archive/restore/delete commands, TSP import, and read-only TSP analysis through `IDispatcher`.
+- [x] Move draft list/collaboration DTOs into Contracts.
+- [x] Dispatch draft list/create/import/delete/co-editor/launch and draft export through Franz Mediator.
+- [x] Move the export response model into Contracts and dispatch COPIL/COPROJ exports through Franz Mediator.
+- [x] Move the task mutation response model into Contracts and dispatch all ten task status, progress, date, metadata, and consumed-time mutations through Franz Mediator.
+- [ ] Migrate remaining draft read/save workflows.
+- [x] Dispatch tracking mutations for task perimeter, workshops/deliverables, weekly points, updates, references, billing, registers, expenses, and settings through Franz Mediator.
+- [x] Dispatch the tracking read query and current-user context query through Franz Mediator.
+- [ ] Review calculation/read-model boundaries and remaining application query surfaces.
+- [ ] Migrate remaining calculation, settings, milestones, and other application workflows.
+- [x] Add architecture assertions for migrated command/query handlers.
+- [x] Add architecture assertions for all migrated task and tracking command handlers.
+- [ ] Expand focused unit and API integration coverage for migrated use cases.
+- [ ] Run the full backend build, test, coverage, reference-scenario, and Angular CI jobs successfully.
 
 ## Design constraints
 
-- Keep business logic in the existing application/domain services during the incremental migration; handlers should orchestrate use cases, not duplicate rules.
+- Keep business logic in existing application/domain services during the incremental migration; handlers orchestrate use cases rather than duplicate rules.
+- Keep HTTP concerns such as multipart validation, stream lifetime, and status/response mapping in the API.
 - Preserve SQL Server configuration, optimistic concurrency/version checks, authorization, and existing response semantics.
 - Do not enable the Franz transaction pipeline until an explicit, tested adapter to Astrolaba's EF Core transaction/unit-of-work model exists.
 - Do not migrate WPF/UI concerns or change unrelated deployment infrastructure.

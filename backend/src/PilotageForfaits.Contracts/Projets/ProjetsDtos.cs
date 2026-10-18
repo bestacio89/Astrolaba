@@ -1,4 +1,4 @@
-namespace PilotageForfaits.Application.Projets;
+namespace PilotageForfaits.Contracts.Projets;
 
 // Objets échangés avec l'interface (DTO). Les montants valent null quand le rôle de l'utilisateur ne permet pas de les voir :
 // ils ne sont jamais envoyés au navigateur, même masqués.
@@ -111,3 +111,6 @@ public sealed record EcheanceDto(
     bool Selectionnable);
 
 public sealed record ImportDto(string NomFichier, DateTimeOffset ImporteLe, IReadOnlyList<string> PointsReleves);
+
+/// <summary>Projet existant correspondant au même forfait, avec les informations filtrées selon les habilitations.</summary>
+public sealed record ProjetExistantDto(Guid? Id, string? Libelle, string Statut, bool Archive, bool Visible, string Message);

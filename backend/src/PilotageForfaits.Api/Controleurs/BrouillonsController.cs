@@ -1,7 +1,8 @@
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Brouillons;
-using PilotageForfaits.Application.Exports;
+using PilotageForfaits.Contracts.Exports;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
 
@@ -14,17 +15,17 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/brouillons")]
-public sealed class BrouillonsController(BrouillonsService brouillons) : ControllerBase
+public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsService brouillons) : ControllerBase
 {
     /// <summary>Mes brouillons (auteur ou co-rédacteur).</summary>
     [HttpGet]
-    public Task<IReadOnlyList<BrouillonResumeDto>> Lister(CancellationToken annulation) => brouillons.ListerAsync(annulation);
+    public Task<IReadOnlyList<BrouillonResumeDto>> Lister(CancellationToken annulation) => dispatcher.SendAsync(new ListerBrouillonsQuery(), annulation);
 
     /// <summary>Crée un brouillon vierge, ou repris du TSP vendu d'un projet existant.</summary>
     [HttpPost]
     public async Task<ActionResult<BrouillonCreeReponse>> Creer(CreationBrouillonCommande commande, CancellationToken annulation)
     {
-        var id = await brouillons.CreerAsync(commande, annulation);
+        var id = await dispatcher.SendAsync(new CreerBrouillonCommand(commande), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new BrouillonCreeReponse(id));
     }
 
@@ -35,7 +36,7 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     {
         ProjetsController.VerifierFichierTsp(fichier);
         await using var flux = fichier.OpenReadStream();
-        var id = await brouillons.ImporterAsync(flux, fichier.FileName, annulation);
+        var id = await dispatcher.SendAsync(new ImporterBrouillonCommand(flux, fichier.FileName), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new BrouillonCreeReponse(id));
     }
 
@@ -51,12 +52,12 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     /// <summary>Invite (adresse e-mail) ou retire (adresse vide) le co-rédacteur.</summary>
     [HttpPut("{id:guid}/co-redacteur")]
     public Task<CoRedacteurReponse> CoRedacteur(Guid id, CoRedacteurCommande commande, CancellationToken annulation) =>
-        brouillons.DefinirCoRedacteurAsync(id, commande, annulation);
+        dispatcher.SendAsync(new DefinirCoRedacteurBrouillonCommand(id, commande), annulation);
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Supprimer(Guid id, CancellationToken annulation)
     {
-        await brouillons.SupprimerAsync(id, annulation);
+        await dispatcher.SendAsync(new SupprimerBrouillonCommand(id), annulation);
         return NoContent();
     }
 
@@ -64,7 +65,7 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     [HttpGet("{id:guid}/export")]
     public async Task<IActionResult> Exporter(Guid id, CancellationToken annulation)
     {
-        var f = await brouillons.ExporterAsync(id, annulation);
+        var f = await dispatcher.SendAsync(new ExporterBrouillonQuery(id), annulation);
         return File(f.Contenu, FichierExport.TypeXlsx, f.Nom);
     }
 
@@ -72,7 +73,7 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     [HttpPost("{id:guid}/lancement")]
     public async Task<ActionResult<ProjetCreeReponse>> Lancer(Guid id, LancementCommande commande, CancellationToken annulation)
     {
-        var projet = await brouillons.LancerAsync(id, commande, annulation);
+        var projet = await dispatcher.SendAsync(new LancerBrouillonCommand(id, commande), annulation);
         return Created($"/api/projets/{projet}", new ProjetCreeReponse(projet));
     }
 }

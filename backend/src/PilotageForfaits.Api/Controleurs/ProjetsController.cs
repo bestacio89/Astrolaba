@@ -1,8 +1,7 @@
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PilotageForfaits.Application.Import;
-using PilotageForfaits.Application.Projets;
+using PilotageForfaits.Contracts.Import;
 using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Domain.Commun;
 
@@ -12,14 +11,14 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/projets")]
-public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService projets, ImportTspService import) : ControllerBase
+public sealed class ProjetsController(IDispatcher dispatcher) : ControllerBase
 {
     /// <summary>Taille maximale d'un TSP (20 Mo).</summary>
     public const long TailleMaxTsp = 20 * 1024 * 1024;
 
     /// <summary>Projets visibles par l'utilisateur connecté, avec leurs indicateurs principaux. ?archives=true : les projets archivés.</summary>
     [HttpGet]
-    public Task<IReadOnlyList<ProjetResumeDto>> Lister([FromQuery] bool archives, CancellationToken annulation) => projets.ListerAsync(archives, annulation);
+    public Task<IReadOnlyList<ProjetResumeDto>> Lister([FromQuery] bool archives, CancellationToken annulation) => dispatcher.SendAsync(new ListerProjetsQuery(archives), annulation);
 
     /// <summary>Archive ou restaure un projet (chef de projet).</summary>
     [HttpPut("{id:guid}/archivage")]
@@ -33,20 +32,20 @@ public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService pro
     [HttpPost("{id:guid}/suppression")]
     public async Task<IActionResult> Supprimer(Guid id, SuppressionCommande commande, CancellationToken annulation)
     {
-        await projets.SupprimerAsync(id, commande, annulation);
+        await dispatcher.SendAsync(new SupprimerProjetCommand(id, commande.Confirmation), annulation);
         return NoContent();
     }
 
     /// <summary>Vue d'ensemble d'un projet.</summary>
     [HttpGet("{id:guid}")]
-    public Task<ProjetDetailDto> Obtenir(Guid id, CancellationToken annulation) => projets.ObtenirAsync(id, annulation);
+    public Task<ProjetDetailDto> Obtenir(Guid id, CancellationToken annulation) => dispatcher.SendAsync(new ObtenirProjetQuery(id), annulation);
 
     /// <summary>Crée un projet vide (V1 : la fiche seule, sans vendu).</summary>
     [HttpPost]
     public async Task<ActionResult<ProjetCreeReponse>> CreerVide(CreerProjetVideRequete requete, CancellationToken annulation)
     {
-        var id = await projets.CreerVideAsync(new CreerProjetVideCommande(
-            requete.Client!, requete.Nom!, requete.Reference, requete.Debut!.Value, requete.FinContractuelle!.Value, requete.TypeContrat), annulation);
+        var id = await dispatcher.SendAsync(new CreerProjetVideMediatorCommand(new CreerProjetVideCommande(
+            requete.Client!, requete.Nom!, requete.Reference, requete.Debut!.Value, requete.FinContractuelle!.Value, requete.TypeContrat)), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new ProjetCreeReponse(id));
     }
 
@@ -57,7 +56,7 @@ public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService pro
     {
         VerifierFichierTsp(fichier);
         await using var flux = fichier.OpenReadStream();
-        var id = await import.ImporterAsync(flux, fichier.FileName, annulation);
+        var id = await dispatcher.SendAsync(new ImporterTspCommand(flux, fichier.FileName), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new ProjetCreeReponse(id));
     }
 
@@ -68,7 +67,7 @@ public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService pro
     {
         VerifierFichierTsp(fichier);
         await using var flux = fichier.OpenReadStream();
-        return await import.AnalyserAsync(flux, fichier.FileName, annulation);
+        return await dispatcher.SendAsync(new AnalyserTspQuery(flux, fichier.FileName), annulation);
     }
 
     /// <summary>Contrôle du fichier envoyé (présent, au format Excel). Partagé avec l'import dans un brouillon.</summary>

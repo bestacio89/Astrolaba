@@ -1,29 +1,13 @@
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Application.Projets;
+using PilotageForfaits.Contracts.Import;
+using PilotageForfaits.Contracts.Projets;
 using PilotageForfaits.Application.Securite;
 using PilotageForfaits.Domain.Entites;
 using PilotageForfaits.Domain.Tsp;
 
 namespace PilotageForfaits.Application.Import;
-
-/// <summary>Ce que l'import va reprendre, montré avant de confirmer.</summary>
-public sealed record ApercuImportDto(
-    string NomFichier,
-    string Client,
-    string Projet,
-    string? Reference,
-    DateOnly? Debut,
-    DateOnly? FinContractuelle,
-    int NombreTaches,
-    int NombreProfils,
-    int NombreEcheances,
-    int NombreAxes,
-    string? SourcePlanning,
-    bool BudgetsAchatsFrais,
-    IReadOnlyList<string> PointsReleves,
-    // projet qui suit déjà ce forfait (l'import sera refusé), ou null
-    ProjetExistantDto? ProjetExistant);
 
 /// <summary>
 /// Import d'un TSP : reprend exactement le comportement de la version de référence (même lecture, mêmes points relevés),
