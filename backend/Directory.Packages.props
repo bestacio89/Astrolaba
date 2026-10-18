@@ -17,6 +17,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
     <!-- Keep Roslyn packages aligned: EF Design brings CSharp 5.6.0 but Workspaces 5.0.0. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.6.0" />
     <!-- API -->
