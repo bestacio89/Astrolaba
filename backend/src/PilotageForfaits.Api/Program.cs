@@ -2,14 +2,12 @@ using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Extensions;
 using PilotageForfaits.Application.Projets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
 using PilotageForfaits.Api.Authentification;
 using PilotageForfaits.Api.Erreurs;
 using PilotageForfaits.Application;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Infrastructure;
-using PilotageForfaits.Infrastructure.Donnees;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,7 +49,9 @@ app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    await PreparerBaseDeDeveloppementAsync(app);
+    await using var scope = app.Services.CreateAsyncScope();
+    var initialiseur = scope.ServiceProvider.GetRequiredService<IInitialiseurBaseDeDeveloppement>();
+    await initialiseur.InitialiserAsync();
 }
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -60,39 +60,6 @@ app.MapControllers();
 app.MapGet("/api/sante", () => Results.Ok(new { statut = "ok" })).AllowAnonymous();
 
 app.Run();
-
-// En développement : crée ou met à jour la base au démarrage.
-static async Task PreparerBaseDeDeveloppementAsync(WebApplication app)
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<PilotageDbContext>();
-    if (db.Database.GetMigrations().Any())
-    {
-        // le modèle a changé depuis la dernière migration (nouvelle version de l'application) : il faut d'abord créer la migration
-        if (db.Database.HasPendingModelChanges())
-        {
-            app.Logger.LogCritical(
-                "LE MODÈLE DE DONNÉES A CHANGÉ DEPUIS LA DERNIÈRE MIGRATION : la base n'est pas mise à jour. Arrêtez l'API (Ctrl+C), puis depuis le dossier du dépôt : " +
-                ".\\scripts\\creer-migration.ps1 -Nom <NomDuChangement> (Windows) ou ./scripts/creer-migration.sh <NomDuChangement>, et relancez l'API " +
-                "(README, « Faire évoluer la base »).");
-            return;
-        }
-        await db.Database.MigrateAsync();
-    }
-    else
-    {
-        // Pas encore de migration (voir README, « Créer la première migration ») : la base est créée directement.
-        app.Logger.LogWarning("Aucune migration trouvée : la base de développement est créée sans migration. Créez la migration initiale avant toute recette.");
-        await db.Database.EnsureCreatedAsync();
-        // une base créée par une version précédente n'est pas mise à jour : on le dit clairement, dès le démarrage
-        var manquants = await db.ElementsManquantsAsync();
-        if (manquants.Count > 0)
-            app.Logger.LogCritical(
-                "LA BASE DE DÉVELOPPEMENT DATE D'UNE VERSION PRÉCÉDENTE : il lui manque {Manquants}. Arrêtez l'API (Ctrl+C), puis depuis le dossier du dépôt : " +
-                ".\\scripts\\reinitialiser-base.ps1 (Windows) ou ./scripts/reinitialiser-base.sh. La base est supprimée puis recréée, gérée par migrations " +
-                "(README, « Repartir propre et passer aux migrations »).", string.Join(", ", manquants));
-    }
-}
 
 /// <summary>Rend la classe Program visible des tests d'intégration.</summary>
 public partial class Program;
