@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Suivi;
 using PilotageForfaits.Contracts.Suivi;
 using PilotageForfaits.Contracts.Exports;
@@ -19,7 +18,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [Route("api/projets/{id:guid}")]
 public sealed class SuiviController(
     IDispatcher dispatcher, SuiviService suivi, SaisiesTachesService taches, PerimetreService perimetre, AteliersLivrablesService ateliers,
-    FacturationService facturation, RegistresService registres, DepensesService depenses, ParametresService parametres, ExportsService exports,
+    FacturationService facturation, RegistresService registres, DepensesService depenses, ParametresService parametres,
     ReferencesService references, MisesAJourService misesAJour, PointsHebdoService pointsHebdo)
     : ControllerBase
 {
