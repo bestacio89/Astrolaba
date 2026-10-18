@@ -8,7 +8,7 @@ namespace PilotageForfaits.Application.Brouillons;
 /// </summary>
 public interface IBrouillonsPersistence
 {
-    Task<IReadOnlyList<BrouillonProjet>> ListerAvecPersonnesAsync(CancellationToken annulation = default);
+    Task<IReadOnlyList<BrouillonProjet>> ListerAvecPersonnesAsync(Guid utilisateurId, CancellationToken annulation = default);
 
     Task<BrouillonProjet?> ObtenirAvecPersonnesAsync(Guid id, CancellationToken annulation = default);
 
