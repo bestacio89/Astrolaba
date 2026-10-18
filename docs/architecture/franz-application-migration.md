@@ -2,30 +2,28 @@
 
 ## Objective
 
-Migrate Astrolaba application use cases to Franz Mediator commands and queries while preserving the existing business rules, authorization boundaries, persistence behavior, and HTTP contracts.
+Migrate Astrolaba application use cases to Franz Mediator commands and queries while preserving business rules, authorization boundaries, persistence behavior, concurrency checks, and HTTP contracts.
 
 ## Migration sequence
 
-- [ ] Establish stable request/response contracts in `PilotageForfaits.Contracts` without introducing a dependency on Application.
-- [x] Move project response DTOs to `PilotageForfaits.Contracts` and migrate project queries (list, detail).
-- [x] Dispatch project lifecycle commands (create, archive/restore, delete) through Franz Mediator.
-- [x] Dispatch TSP project import and read-only import analysis through Franz Mediator.
-- [ ] Migrate remaining draft workflows (read, save).
-- [x] Dispatch draft export and project COPIL/COPROJ exports through Franz Mediator.
-- [x] Dispatch draft list, create, import, delete, co-editor, and launch through Franz Mediator.
-- [ ] Migrate TSP import analysis and import workflows.
-- [ ] Inventory and migrate the remaining application services, including task tracking, calculations, settings, milestones, and exports.
-- [x] Route project lifecycle and TSP-import commands plus draft create/delete/launch through `IDispatcher`.
-- [ ] Route remaining API use cases through `IDispatcher`; keep transport-specific concerns such as multipart file handling and HTTP response mapping in the API.
-- [x] Add architecture assertions for the migrated command and query handlers.
-- [ ] Add handler/unit tests and API integration tests for each migrated use case.
-- [x] Add architecture tests asserting the migrated command and query handler contracts.
-- [ ] Add further architecture tests enforcing the intended Contracts/Application/API dependency direction.
-- [ ] Run the full backend build and test suite in CI and address all regressions.
+- [ ] Complete the Contracts boundary for remaining draft payloads and application response models without introducing a Contracts-to-Application dependency.
+- [x] Move project response DTOs and the TSP import preview DTO into Contracts.
+- [x] Dispatch project list/detail queries, create/archive/restore/delete commands, TSP import, and read-only TSP analysis through `IDispatcher`.
+- [x] Move draft list/collaboration DTOs into Contracts.
+- [x] Dispatch draft list/create/import/delete/co-editor/launch and draft export through Franz Mediator.
+- [x] Move the export response model into Contracts and dispatch COPIL/COPROJ exports through Franz Mediator.
+- [x] Move the task mutation response model into Contracts and dispatch all ten task status, progress, date, metadata, and consumed-time mutations through Franz Mediator.
+- [ ] Migrate remaining draft read/save workflows.
+- [ ] Migrate the remaining tracking workflows: task perimeter, workshops/deliverables, weekly points, updates, references, billing, registers, expenses, and settings.
+- [ ] Migrate remaining calculation, settings, milestones, and other application workflows.
+- [x] Add architecture assertions for migrated command/query handlers.
+- [ ] Expand unit and API integration coverage for migrated use cases.
+- [ ] Run the full backend build, test, coverage, reference-scenario, and Angular CI jobs successfully.
 
 ## Design constraints
 
-- Keep business logic in the existing application/domain services during the incremental migration; handlers should orchestrate use cases, not duplicate rules.
+- Keep business logic in existing application/domain services during the incremental migration; handlers orchestrate use cases rather than duplicate rules.
+- Keep HTTP concerns such as multipart validation, stream lifetime, and status/response mapping in the API.
 - Preserve SQL Server configuration, optimistic concurrency/version checks, authorization, and existing response semantics.
 - Do not enable the Franz transaction pipeline until an explicit, tested adapter to Astrolaba's EF Core transaction/unit-of-work model exists.
 - Do not migrate WPF/UI concerns or change unrelated deployment infrastructure.
