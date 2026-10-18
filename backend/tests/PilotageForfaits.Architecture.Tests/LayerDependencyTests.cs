@@ -4,6 +4,7 @@ using Franz.Common.Mediator.Handlers;
 using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Api.Controleurs;
+using PilotageForfaits.Client.Http.Clients;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Calcul;
@@ -26,6 +27,7 @@ namespace PilotageForfaits.Architecture.Tests;
 public sealed class LayerDependencyTests
 {
     private static readonly Assembly ApiAssembly = typeof(ProjetsController).Assembly;
+    private static readonly Assembly ClientHttpAssembly = typeof(IProjetsClient).Assembly;
     private static readonly Assembly ContractsAssembly = typeof(CreerProjetVideRequete).Assembly;
     private static readonly Assembly ApplicationAssembly = typeof(PilotageForfaits.Application.DependencyInjection).Assembly;
     private static readonly Assembly DomainAssembly = typeof(PilotageForfaits.Domain.Entites.Projet).Assembly;
@@ -67,6 +69,20 @@ public sealed class LayerDependencyTests
 
         Assert.DoesNotContain("Microsoft.EntityFrameworkCore", references);
         Assert.DoesNotContain("Microsoft.Data.SqlClient", references);
+    }
+
+    [Fact]
+    public void Http_clients_must_depend_on_contracts_not_runtime_layers()
+    {
+        var references = ClientHttpAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains("PilotageForfaits.Contracts", references);
+        Assert.DoesNotContain("PilotageForfaits.Api", references);
+        Assert.DoesNotContain("PilotageForfaits.Application", references);
+        Assert.DoesNotContain("PilotageForfaits.Domain", references);
+        Assert.DoesNotContain("PilotageForfaits.Infrastructure", references);
     }
 
     [Fact]
