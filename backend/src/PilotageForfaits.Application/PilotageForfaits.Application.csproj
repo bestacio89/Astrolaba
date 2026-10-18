@@ -11,5 +11,6 @@
     <!-- Retained while existing application services are migrated incrementally. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Franz.Common.Mediator" />
+    <PackageReference Include="Franz.Common.Business" />
   </ItemGroup>
 </Project>
