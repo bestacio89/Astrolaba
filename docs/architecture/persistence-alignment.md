@@ -22,6 +22,11 @@ and the mediator persistence behavior. The current-user adapter supplies the aut
 Entra ID object identifier for Franz audit fields. Ordinary deletes must retain Franz's
 soft-delete semantics and global query filters.
 
+Database initialization and EF exception translation belong to Infrastructure. The API
+may invoke the development initializer as part of host startup, but it must not reference
+`PilotageDbContext`, EF Core runtime APIs, or SQL Server provider exceptions. HTTP error
+mapping consumes application-level exceptions such as `ConflitException` only.
+
 Astrolaba intentionally retains one exceptional physical-delete workflow for projects
 created by mistake. It must remain explicit, authorization-protected, transactionally
 atomic, dependency ordered, and tested against SQL Server. It must not become a second
@@ -106,9 +111,9 @@ Use a two-stage migration history:
    representative existing rows. Verify that existing business data is preserved, audit
    fields receive valid Franz-compatible values, and ordinary deletes are soft deletes.
 
-Never apply schema changes automatically at application startup. Generate and inspect the
-SQL script, test it on a disposable SQL Server database, and treat production application
-as a separate deployment operation.
+The existing startup initializer is development-only. Keep production schema changes out
+of application startup: generate and inspect the SQL script, test it on a disposable SQL
+Server database, and treat production application as a separate deployment operation.
 
 ## Verification
 
