@@ -57,6 +57,7 @@ public interface ISaisieDonneesPersistence
     void SupprimerChargeTache(ChargeTache charge);
     Task<ProfilProjet?> ObtenirProfilParIdAsync(Guid profilId, CancellationToken annulation);
     void SupprimerEvolution(EvolutionPerimetre evolution);
+    void SupprimerEvolutions(IEnumerable<EvolutionPerimetre> evolutions);
     Task<Dictionary<Guid, string>> ListerCodesAxesAsync(Guid projetId, CancellationToken annulation);
     Task<Dictionary<Guid, string>> ListerCodesPhasesAsync(Guid projetId, CancellationToken annulation);
 }
