@@ -1,5 +1,4 @@
 using System.Globalization;
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Commun;
@@ -15,9 +14,9 @@ namespace PilotageForfaits.Application.Suivi;
 /// puis renvoi du suivi recalculé. Une saisie = une transaction (un seul enregistrement).
 /// </summary>
 public sealed class SaisieOutils(
-    IContexteDonnees db, ServiceAcces acces, SuiviService suivi, ConstructeurProjetCalcul constructeur, IHorloge horloge, ServiceJournal journal)
+    ISaisieDonneesPersistence persistence, ServiceAcces acces, SuiviService suivi, ConstructeurProjetCalcul constructeur, IHorloge horloge, ServiceJournal journal)
 {
-    public IContexteDonnees Db => db;
+    public ISaisieDonneesPersistence Persistence => persistence;
     public IHorloge Horloge => horloge;
     public DateOnly Aujourdhui => horloge.Aujourdhui;
 
@@ -56,7 +55,7 @@ public sealed class SaisieOutils(
     public async Task<ResultatSaisieDto> TerminerAsync(Guid projetId, List<MessageDto> messages, CancellationToken annulation, string? ouvrir = null,
         Func<ResultatCalcul, IEnumerable<MessageDto>>? apres = null)
     {
-        await db.SaveChangesAsync(annulation);
+        await persistence.EnregistrerAsync(annulation);
         var role = await acces.ExigerAccesAsync(projetId, annulation);
         var (json, modele) = await suivi.ConstruireAvecModeleAsync(projetId, role, annulation);
         if (apres is not null) messages.AddRange(apres(modele));
@@ -69,12 +68,12 @@ public sealed class SaisieOutils(
 
     /// <summary>Tâche du projet (avec ses évolutions, pour savoir si elle est annulée).</summary>
     public async Task<Tache> TacheAsync(Guid projetId, string repere, CancellationToken annulation) =>
-        await db.Taches.Include(t => t.Evolutions).FirstOrDefaultAsync(t => t.ProjetId == projetId && t.Repere == repere && !t.EstSection, annulation)
+        await persistence.ObtenirTacheAsync(projetId, repere, annulation)
         ?? throw new IntrouvableException("Tâche introuvable.");
 
     /// <summary>Profil du projet.</summary>
     public async Task<ProfilProjet> ProfilAsync(Guid projetId, Guid profilId, CancellationToken annulation) =>
-        await db.Profils.FirstOrDefaultAsync(p => p.ProjetId == projetId && p.Id == profilId, annulation)
+        await persistence.ObtenirProfilAsync(projetId, profilId, annulation)
         ?? throw new IntrouvableException("Profil introuvable.");
 
     /// <summary>Nom de l'utilisateur, tel qu'il apparaît dans les registres (« Par »).</summary>
