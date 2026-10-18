@@ -137,6 +137,10 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(ImporterTspCommandHandler)));
         Assert.True(typeof(ICommandHandler<CreerBrouillonCommand, Guid>)
             .IsAssignableFrom(typeof(CreerBrouillonCommandHandler)));
+        Assert.True(typeof(IQueryHandler<ObtenirBrouillonQuery, System.Text.Json.Nodes.JsonObject>)
+            .IsAssignableFrom(typeof(ObtenirBrouillonQueryHandler)));
+        Assert.True(typeof(ICommandHandler<EnregistrerBrouillonCommand, System.Text.Json.Nodes.JsonObject>)
+            .IsAssignableFrom(typeof(EnregistrerBrouillonCommandHandler)));
         Assert.True(typeof(ICommandHandler<SupprimerBrouillonCommand, bool>)
             .IsAssignableFrom(typeof(SupprimerBrouillonCommandHandler)));
         Assert.True(typeof(ICommandHandler<LancerBrouillonCommand, Guid>)
