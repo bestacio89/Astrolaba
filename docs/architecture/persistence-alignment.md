@@ -32,13 +32,16 @@ general-purpose delete lifecycle alongside Franz.
 `IContexteDonnees` still exposes EF Core `DbSet<T>` from Application, and application
 services still compose EF queries directly. This is not a clean persistence boundary.
 Focused ports now isolate project-identity lookup (`IRechercheIdentiteProjet`),
-authorization/profile persistence (`IAccesRepository`), and journal appends
-(`IJournalWriter`). Journal entries are added to the current unit of work without an
-early commit so they commit or roll back with the business mutation they describe.
-Project calculation inputs are loaded through `IChargeurDonneesProjet`; the calculation
-builder and business transformation remain in Application. Continue replacing the
-context with use-case-specific ports implemented in Infrastructure using EF Core and
-Franz repositories. Do not replace the context with a generic `IQueryable<T>`
+authorization/profile persistence (`IAccesRepository`), journal appends
+(`IJournalWriter`), project calculation input loading (`IChargeurDonneesProjet`),
+and project list/detail/deletion persistence (`IProjetsPersistence`). Journal entries
+are added to the current unit of work without an early commit so they commit or roll
+back with the business mutation they describe. Project calculation transformations and
+workflow authorization remain in Application; EF query composition stays in
+Infrastructure. Project creation and archive/restore rely on the mediator persistence
+behavior for their command commit. The exceptional permanent-delete workflow retains
+an explicit commit so successful physical deletion is confirmed before logging.
+Continue replacing the remaining context usages with use-case-specific ports. Do not replace the context with a generic `IQueryable<T>`
 abstraction or load entire tables through generic repository methods.
 
 Migrate cohesive workflows incrementally and preserve:
