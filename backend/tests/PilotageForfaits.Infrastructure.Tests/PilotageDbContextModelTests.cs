@@ -45,6 +45,36 @@ public sealed class PilotageDbContextModelTests
     }
 
     [Fact]
+    public void Astrolaba_entity_base_extends_Franz_without_redeclaring_lifecycle_state()
+    {
+        Assert.Equal(typeof(Entity<Guid>), typeof(Entite).BaseType);
+
+        var declaredProperties = typeof(Entite)
+            .GetProperties(System.Reflection.BindingFlags.Instance |
+                           System.Reflection.BindingFlags.Public |
+                           System.Reflection.BindingFlags.DeclaredOnly)
+            .Select(property => property.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(new[] { nameof(Entite.Version) }, declaredProperties);
+
+        var franzLifecycleProperties = new[]
+        {
+            nameof(IEntity<Guid>.Id),
+            nameof(IEntity<Guid>.IsDeleted),
+            nameof(IEntity<Guid>.DateCreated),
+            nameof(IEntity<Guid>.LastModifiedDate),
+            nameof(Entity<Guid>.CreatedBy),
+            nameof(Entity<Guid>.LastModifiedBy),
+            nameof(IEntity<Guid>.DateDeleted),
+            nameof(IEntity<Guid>.DeletedBy)
+        };
+
+        Assert.All(franzLifecycleProperties, property =>
+            Assert.DoesNotContain(property, declaredProperties));
+    }
+
+    [Fact]
     public void Every_persisted_entity_uses_Franz_IEntity_and_framework_auditing()
     {
         using var context = CreateContext();
