@@ -8,6 +8,7 @@ using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Commun;
+using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Import;
 using PilotageForfaits.Contracts.Import;
 using PilotageForfaits.Contracts.Exports;
@@ -106,7 +107,8 @@ public sealed class LayerDependencyTests
             typeof(ProjetsService),
             typeof(BrouillonsService),
             typeof(SuiviService),
-            typeof(ImportTspService)
+            typeof(ImportTspService),
+            typeof(ExportsService)
         };
 
         foreach (var workflow in workflows)
