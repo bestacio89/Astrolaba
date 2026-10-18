@@ -4,6 +4,7 @@ using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
+using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
 
@@ -242,30 +243,44 @@ public sealed class PilotageDbContext(
     /// </summary>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        if (_projetIdPourSuppressionDefinitive is { } projetId)
+        try
         {
-            var deletedRows = await SupprimerProjetDefinitivementAsync(projetId, cancellationToken);
-            _projetIdPourSuppressionDefinitive = null;
-            return deletedRows;
-        }
+            if (_projetIdPourSuppressionDefinitive is { } projetId)
+            {
+                var deletedRows = await SupprimerProjetDefinitivementAsync(projetId, cancellationToken);
+                _projetIdPourSuppressionDefinitive = null;
+                return deletedRows;
+            }
 
-        VerifierLongueurs();
-        // Les réglages possédés vivent dans la ligne projet : leur modification doit incrémenter la version du projet.
-        foreach (var p in ChangeTracker.Entries<Projet>())
-        {
-            if (p.State == EntityState.Unchanged && p.Reference(x => x.Parametres).TargetEntry?.State == EntityState.Modified)
-                p.Property(x => x.Version).IsModified = true;
-        }
-        foreach (var e in ChangeTracker.Entries<Entite>())
-        {
-            if (e.State == EntityState.Added)
-                e.Entity.Version = 1;
-            else if (e.State is EntityState.Modified or EntityState.Deleted)
-                e.Entity.Version = e.OriginalValues.GetValue<int>(nameof(Entite.Version)) + 1;
-        }
+            VerifierLongueurs();
+            // Les réglages possédés vivent dans la ligne projet : leur modification doit incrémenter la version du projet.
+            foreach (var p in ChangeTracker.Entries<Projet>())
+            {
+                if (p.State == EntityState.Unchanged && p.Reference(x => x.Parametres).TargetEntry?.State == EntityState.Modified)
+                    p.Property(x => x.Version).IsModified = true;
+            }
+            foreach (var e in ChangeTracker.Entries<Entite>())
+            {
+                if (e.State == EntityState.Added)
+                    e.Entity.Version = 1;
+                else if (e.State is EntityState.Modified or EntityState.Deleted)
+                    e.Entity.Version = e.OriginalValues.GetValue<int>(nameof(Entite.Version)) + 1;
+            }
 
-        // DbContextBase applies Franz auditing and converts ordinary deletes to soft deletes.
-        return await base.SaveChangesAsync(cancellationToken);
+            // DbContextBase applies Franz auditing and converts ordinary deletes to soft deletes.
+            return await base.SaveChangesAsync(cancellationToken);
+        
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflitException(
+                "Quelqu'un a modifié ces données pendant que vous les modifiiez. Rechargez la page puis refaites votre modification.");
+        }
+        catch (DbUpdateException)
+        {
+            throw new ConflitException(
+                "L'enregistrement n'a pas pu être fait car les données entrent en conflit avec un autre enregistrement. Rechargez la page puis refaites votre modification.");
+        }
     }
 
     /// <summary>
