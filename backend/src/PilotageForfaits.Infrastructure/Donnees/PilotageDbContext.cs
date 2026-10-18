@@ -1,4 +1,6 @@
 using System.Reflection;
+using Franz.Common.EntityFramework;
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Domain.Commun;
@@ -10,7 +12,9 @@ namespace PilotageForfaits.Infrastructure.Donnees;
 /// Accès à la base relationnelle (SQL Server) avec Entity Framework Core.
 /// La structure des tables est décrite dans le dossier Configurations, une classe par objet du modèle de données.
 /// </summary>
-public sealed class PilotageDbContext(DbContextOptions<PilotageDbContext> options) : DbContext(options), IContexteDonnees
+public sealed class PilotageDbContext(
+    DbContextOptions<PilotageDbContext> options,
+    IDispatcher dispatcher) : DbContextBase(options, dispatcher), IContexteDonnees
 {
     public DbSet<Utilisateur> Utilisateurs => Set<Utilisateur>();
     public DbSet<Habilitation> Habilitations => Set<Habilitation>();
@@ -57,6 +61,8 @@ public sealed class PilotageDbContext(DbContextOptions<PilotageDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Franz base behavior must run before Astrolaba-specific mapping invariants.
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PilotageDbContext).Assembly);
 
         // Numéro de version de chaque objet : sert à détecter deux modifications simultanées.
