@@ -1,3 +1,5 @@
+using PilotageForfaits.Contracts.Projets;
+
 namespace PilotageForfaits.Contracts.Import;
 
 /// <summary>Ce que l'import va reprendre, montré avant de confirmer.</summary>
