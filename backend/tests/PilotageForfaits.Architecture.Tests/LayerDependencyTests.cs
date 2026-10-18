@@ -142,6 +142,12 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(ObtenirProjetQueryHandler)));
         Assert.True(typeof(IQueryHandler<AnalyserTspQuery, ApercuImportDto>)
             .IsAssignableFrom(typeof(AnalyserTspQueryHandler)));
+        Assert.True(typeof(IQueryHandler<ListerBrouillonsQuery, IReadOnlyList<BrouillonResumeDto>>)
+            .IsAssignableFrom(typeof(ListerBrouillonsQueryHandler)));
+        Assert.True(typeof(ICommandHandler<ImporterBrouillonCommand, Guid>)
+            .IsAssignableFrom(typeof(ImporterBrouillonCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirCoRedacteurBrouillonCommand, CoRedacteurReponse>)
+            .IsAssignableFrom(typeof(DefinirCoRedacteurBrouillonCommandHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
