@@ -1,3 +1,4 @@
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Brouillons;
@@ -14,7 +15,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/brouillons")]
-public sealed class BrouillonsController(BrouillonsService brouillons) : ControllerBase
+public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsService brouillons) : ControllerBase
 {
     /// <summary>Mes brouillons (auteur ou co-rédacteur).</summary>
     [HttpGet]
@@ -24,7 +25,7 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     [HttpPost]
     public async Task<ActionResult<BrouillonCreeReponse>> Creer(CreationBrouillonCommande commande, CancellationToken annulation)
     {
-        var id = await brouillons.CreerAsync(commande, annulation);
+        var id = await dispatcher.SendAsync(new CreerBrouillonCommand(commande), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new BrouillonCreeReponse(id));
     }
 
@@ -56,7 +57,7 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Supprimer(Guid id, CancellationToken annulation)
     {
-        await brouillons.SupprimerAsync(id, annulation);
+        await dispatcher.SendAsync(new SupprimerBrouillonCommand(id), annulation);
         return NoContent();
     }
 
@@ -72,7 +73,7 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     [HttpPost("{id:guid}/lancement")]
     public async Task<ActionResult<ProjetCreeReponse>> Lancer(Guid id, LancementCommande commande, CancellationToken annulation)
     {
-        var projet = await brouillons.LancerAsync(id, commande, annulation);
+        var projet = await dispatcher.SendAsync(new LancerBrouillonCommand(id, commande), annulation);
         return Created($"/api/projets/{projet}", new ProjetCreeReponse(projet));
     }
 }
