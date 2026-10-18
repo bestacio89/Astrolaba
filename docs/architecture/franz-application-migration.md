@@ -14,10 +14,12 @@ Migrate Astrolaba application use cases to Franz Mediator commands and queries w
 - [x] Move the export response model into Contracts and dispatch COPIL/COPROJ exports through Franz Mediator.
 - [x] Move the task mutation response model into Contracts and dispatch all ten task status, progress, date, metadata, and consumed-time mutations through Franz Mediator.
 - [ ] Migrate remaining draft read/save workflows.
-- [ ] Migrate the remaining tracking workflows: task perimeter, workshops/deliverables, weekly points, updates, references, billing, registers, expenses, and settings.
+- [x] Dispatch tracking mutations for task perimeter, workshops/deliverables, weekly points, updates, references, billing, registers, expenses, and settings through Franz Mediator.
+- [ ] Migrate the remaining tracking read query and review calculation/read-model boundaries.
 - [ ] Migrate remaining calculation, settings, milestones, and other application workflows.
 - [x] Add architecture assertions for migrated command/query handlers.
-- [ ] Expand unit and API integration coverage for migrated use cases.
+- [x] Add architecture assertions for all migrated task and tracking command handlers.
+- [ ] Expand focused unit and API integration coverage for migrated use cases.
 - [ ] Run the full backend build, test, coverage, reference-scenario, and Angular CI jobs successfully.
 
 ## Design constraints
