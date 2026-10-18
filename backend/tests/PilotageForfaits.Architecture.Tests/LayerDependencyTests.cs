@@ -105,7 +105,8 @@ public sealed class LayerDependencyTests
             typeof(ServiceJournal),
             typeof(ProjetsService),
             typeof(BrouillonsService),
-            typeof(SuiviService)
+            typeof(SuiviService),
+            typeof(ImportTspService)
         };
 
         foreach (var workflow in workflows)
