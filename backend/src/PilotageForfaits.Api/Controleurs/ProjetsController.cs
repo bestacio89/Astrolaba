@@ -33,7 +33,7 @@ public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService pro
     [HttpPost("{id:guid}/suppression")]
     public async Task<IActionResult> Supprimer(Guid id, SuppressionCommande commande, CancellationToken annulation)
     {
-        await projets.SupprimerAsync(id, commande, annulation);
+        await dispatcher.SendAsync(new SupprimerProjetCommand(id, commande.Confirmation), annulation);
         return NoContent();
     }
 
@@ -45,8 +45,8 @@ public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService pro
     [HttpPost]
     public async Task<ActionResult<ProjetCreeReponse>> CreerVide(CreerProjetVideRequete requete, CancellationToken annulation)
     {
-        var id = await projets.CreerVideAsync(new CreerProjetVideCommande(
-            requete.Client!, requete.Nom!, requete.Reference, requete.Debut!.Value, requete.FinContractuelle!.Value, requete.TypeContrat), annulation);
+        var id = await dispatcher.SendAsync(new CreerProjetVideMediatorCommand(new CreerProjetVideCommande(
+            requete.Client!, requete.Nom!, requete.Reference, requete.Debut!.Value, requete.FinContractuelle!.Value, requete.TypeContrat)), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new ProjetCreeReponse(id));
     }
 
@@ -57,7 +57,7 @@ public sealed class ProjetsController(IDispatcher dispatcher, ProjetsService pro
     {
         VerifierFichierTsp(fichier);
         await using var flux = fichier.OpenReadStream();
-        var id = await import.ImporterAsync(flux, fichier.FileName, annulation);
+        var id = await dispatcher.SendAsync(new ImporterTspCommand(flux, fichier.FileName), annulation);
         return CreatedAtAction(nameof(Obtenir), new { id }, new ProjetCreeReponse(id));
     }
 
