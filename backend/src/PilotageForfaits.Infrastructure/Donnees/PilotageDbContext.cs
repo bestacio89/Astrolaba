@@ -130,18 +130,15 @@ public sealed class PilotageDbContext(
     /// Franz soft-deletes IEntity instances by default. Astrolaba has one explicit permanent-delete use case
     /// (a project created by mistake), which must remain a physical delete to release its unique business identity.
     /// </summary>
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    private async Task<int> SupprimerProjetDefinitivementAsync(Guid projetId, CancellationToken cancellationToken)
     {
-        if (_projetIdPourSuppressionDefinitive is not { } projetId)
-            return await base.SaveChangesAsync(cancellationToken);
-
         var strategy = Database.CreateExecutionStrategy();
-        var deletedRows = await strategy.ExecuteAsync(async () =>
+        return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
             var total = 0;
             var types = Model.GetEntityTypes()
-                .Where(type => !type.IsOwned() &&
+                .Where(type => !type.IsOwned() && !type.ClrType.IsAbstract &&
                     (typeof(EntiteDeProjet).IsAssignableFrom(type.ClrType) || type.ClrType == typeof(Projet)))
                 .ToHashSet();
 
@@ -169,9 +166,6 @@ public sealed class PilotageDbContext(
             await transaction.CommitAsync(cancellationToken);
             return total;
         });
-
-        _projetIdPourSuppressionDefinitive = null;
-        return deletedRows;
     }
 
     private static IReadOnlyList<Microsoft.EntityFrameworkCore.Metadata.IEntityType> TrierPourSuppression(
@@ -246,10 +240,17 @@ public sealed class PilotageDbContext(
     /// EF Core vérifie que la version en base est toujours celle lue ; sinon, quelqu'un d'autre a modifié l'objet entre-temps
     /// et l'enregistrement est refusé (DbUpdateConcurrencyException, transformée en réponse 409 par l'API).
     /// </summary>
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        if (_projetIdPourSuppressionDefinitive is { } projetId)
+        {
+            var deletedRows = await SupprimerProjetDefinitivementAsync(projetId, cancellationToken);
+            _projetIdPourSuppressionDefinitive = null;
+            return deletedRows;
+        }
+
         VerifierLongueurs();
-        // les réglages du projet sont rangés dans la ligne du projet (type « possédé ») : les modifier change aussi sa version
+        // Les réglages possédés vivent dans la ligne projet : leur modification doit incrémenter la version du projet.
         foreach (var p in ChangeTracker.Entries<Projet>())
         {
             if (p.State == EntityState.Unchanged && p.Reference(x => x.Parametres).TargetEntry?.State == EntityState.Modified)
@@ -257,10 +258,14 @@ public sealed class PilotageDbContext(
         }
         foreach (var e in ChangeTracker.Entries<Entite>())
         {
-            if (e.State == EntityState.Added) e.Entity.Version = 1;
-            else if (e.State == EntityState.Modified) e.Entity.Version = e.OriginalValues.GetValue<int>(nameof(Entite.Version)) + 1;
+            if (e.State == EntityState.Added)
+                e.Entity.Version = 1;
+            else if (e.State is EntityState.Modified or EntityState.Deleted)
+                e.Entity.Version = e.OriginalValues.GetValue<int>(nameof(Entite.Version)) + 1;
         }
-        return base.SaveChangesAsync(cancellationToken);
+
+        // DbContextBase applies Franz auditing and converts ordinary deletes to soft deletes.
+        return await base.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
