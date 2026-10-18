@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IReferencesPersistence, ReferencesPersistence>();
         services.AddScoped<IRegistresPersistence, RegistresPersistence>();
         services.AddScoped<IParametresPersistence, ParametresPersistence>();
+        services.AddScoped<ISaisieDonneesPersistence, SaisieDonneesPersistence>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
