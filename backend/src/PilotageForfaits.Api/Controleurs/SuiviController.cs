@@ -1,9 +1,11 @@
 using System.Text.Json.Nodes;
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Suivi;
 using PilotageForfaits.Contracts.Suivi;
+using PilotageForfaits.Contracts.Exports;
 using PilotageForfaits.Domain.Entites;
 
 namespace PilotageForfaits.Api.Controleurs;
@@ -16,7 +18,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [Authorize]
 [Route("api/projets/{id:guid}")]
 public sealed class SuiviController(
-    SuiviService suivi, SaisiesTachesService taches, PerimetreService perimetre, AteliersLivrablesService ateliers,
+    IDispatcher dispatcher, SuiviService suivi, SaisiesTachesService taches, PerimetreService perimetre, AteliersLivrablesService ateliers,
     FacturationService facturation, RegistresService registres, DepensesService depenses, ParametresService parametres, ExportsService exports,
     ReferencesService references, MisesAJourService misesAJour, PointsHebdoService pointsHebdo)
     : ControllerBase
@@ -252,7 +254,7 @@ public sealed class SuiviController(
     [HttpPost("exports/copil")]
     public async Task<IActionResult> Copil(Guid id, CancellationToken a)
     {
-        var f = await exports.CopilAsync(id, a);
+        var f = await dispatcher.SendAsync(new ExporterCopilCommand(id), a);
         return File(f.Contenu, FichierExport.TypeXlsx, f.Nom);
     }
 
@@ -260,7 +262,7 @@ public sealed class SuiviController(
     [HttpPost("exports/coproj")]
     public async Task<IActionResult> Coproj(Guid id, CoprojCommande c, CancellationToken a)
     {
-        var f = await exports.CoprojAsync(id, c, a);
+        var f = await dispatcher.SendAsync(new ExporterCoprojCommand(id, c), a);
         return File(f.Contenu, FichierExport.TypeXlsx, f.Nom);
     }
 }
