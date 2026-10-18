@@ -10,15 +10,16 @@ Migrate Astrolaba application use cases to Franz Mediator commands and queries w
 - [x] Move project response DTOs to `PilotageForfaits.Contracts` and migrate project queries (list, detail).
 - [x] Dispatch project lifecycle commands (create, archive/restore, delete) through Franz Mediator.
 - [x] Dispatch TSP project import and read-only import analysis through Franz Mediator.
-- [ ] Migrate remaining draft workflows (list, import, read, save, co-editor, export).
-- [x] Dispatch draft create, delete, and launch through Franz Mediator.
+- [ ] Migrate remaining draft workflows (read, save, export).
+- [x] Dispatch draft list, create, import, delete, co-editor, and launch through Franz Mediator.
 - [ ] Migrate TSP import analysis and import workflows.
 - [ ] Inventory and migrate the remaining application services, including task tracking, calculations, settings, milestones, and exports.
 - [x] Route project lifecycle and TSP-import commands plus draft create/delete/launch through `IDispatcher`.
 - [ ] Route remaining API use cases through `IDispatcher`; keep transport-specific concerns such as multipart file handling and HTTP response mapping in the API.
 - [x] Add architecture assertions for the migrated command and query handlers.
 - [ ] Add handler/unit tests and API integration tests for each migrated use case.
-- [ ] Add architecture tests enforcing the intended Contracts/Application/API dependency direction.
+- [x] Add architecture tests asserting the migrated command and query handler contracts.
+- [ ] Add further architecture tests enforcing the intended Contracts/Application/API dependency direction.
 - [ ] Run the full backend build and test suite in CI and address all regressions.
 
 ## Design constraints
