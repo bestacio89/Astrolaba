@@ -37,16 +37,16 @@ try {
   Executer 'suppression de la base' { dotnet ef database drop --force --no-build @commun }
 
   Write-Host "2/3 Suppression des anciennes migrations…" -ForegroundColor Yellow
-  $migrations = 'src/PilotageForfaits.Infrastructure/Donnees/Migrations'
+  $migrations = 'src/PilotageForfaits.Infrastructure/Migrations'
   if (Test-Path $migrations) { Remove-Item -Recurse -Force $migrations }
 
   Write-Host "3/3 Création de la migration initiale, à jour du modèle…" -ForegroundColor Yellow
-  Executer 'création de la migration' { dotnet ef migrations add Initiale @commun --output-dir Donnees/Migrations }
+  Executer 'création de la migration' { dotnet ef migrations add Initiale @commun --output-dir Migrations }
   if (-not (Get-ChildItem $migrations -Filter '*_Initiale.cs' -ErrorAction SilentlyContinue)) {
     Write-Host "ÉCHEC : la migration Initiale n'a pas été créée dans $migrations." -ForegroundColor Red
     exit 1
   }
 
   Write-Host "Terminé. Lancez l'API (dotnet run --project src/PilotageForfaits.Api) : elle crée la base." -ForegroundColor Green
-  Write-Host "Pensez à enregistrer le dossier Donnees/Migrations dans Git (il remplace l'ancien)." -ForegroundColor Cyan
+  Write-Host "Pensez à enregistrer le dossier Migrations dans Git (il remplace l'ancien)." -ForegroundColor Cyan
 } finally { Pop-Location }
