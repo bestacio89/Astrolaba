@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<IProjetsClient, ProjetsClient>(Configure);
         services.AddHttpClient<IBrouillonsClient, BrouillonsClient>(Configure);
         services.AddHttpClient<IMoiClient, MoiClient>(Configure);
+        services.AddHttpClient<ISanteClient, SanteClient>(Configure);
         services.AddHttpClient<ISuiviClient, SuiviClient>(Configure);
 
         return services;
