@@ -177,6 +177,24 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(DefinirEcheanceTacheCommandHandler)));
         Assert.True(typeof(ICommandHandler<SaisirConsommeTacheCommand, ResultatSaisieDto>)
             .IsAssignableFrom(typeof(SaisirConsommeTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerTacheProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(CreerTacheProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerTacheProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerTacheProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<AnnulerTacheProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(AnnulerTacheProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<RetablirTacheProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(RetablirTacheProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<AjouterProfilTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(AjouterProfilTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ModifierChargeAjouteeCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ModifierChargeAjouteeCommandHandler)));
+        Assert.True(typeof(ICommandHandler<RetirerChargeAjouteeCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(RetirerChargeAjouteeCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ReaffecterChargeTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ReaffecterChargeTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<AnnulerReaffectationTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(AnnulerReaffectationTacheCommandHandler)));
     }
 
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
