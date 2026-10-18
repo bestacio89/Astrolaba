@@ -1,7 +1,7 @@
+using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PilotageForfaits.Application.Abstractions;
-using PilotageForfaits.Application.Securite;
+using PilotageForfaits.Contracts.Moi;
 
 namespace PilotageForfaits.Api.Controleurs;
 
@@ -9,14 +9,9 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/moi")]
-public sealed class MoiController(ServiceAcces acces, IUtilisateurCourant courant) : ControllerBase
+public sealed class MoiController(IDispatcher dispatcher) : ControllerBase
 {
     [HttpGet]
-    public async Task<MoiDto> Obtenir(CancellationToken annulation)
-    {
-        var u = await acces.UtilisateurAsync(annulation);
-        return new MoiDto(u.Id, u.Prenom, u.Nom, u.Email, courant.Roles.ToList(), acces.PeutCreerUnProjet, acces.VoitTousLesProjets);
-    }
+    public Task<MoiDto> Obtenir(CancellationToken annulation) =>
+        dispatcher.SendAsync(new ObtenirMoiQuery(), annulation);
 }
-
-public sealed record MoiDto(Guid Id, string Prenom, string Nom, string Email, IReadOnlyList<string> Roles, bool PeutCreerUnProjet, bool VoitTousLesProjets);
