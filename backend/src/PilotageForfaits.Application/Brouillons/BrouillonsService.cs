@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
+using Franz.Common.Mediator.Pipelines.Core;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Commun;
@@ -22,7 +22,8 @@ namespace PilotageForfaits.Application.Brouillons;
 ///   suit le projet en lecture, montants compris. Le brouillon est alors supprimé.
 /// </summary>
 public sealed class BrouillonsService(
-    IContexteDonnees db, ServiceAcces acces, IHorloge horloge, UniciteProjet unicite, ILecteurTsp lecteur,
+    IBrouillonsPersistence persistence, IProjetsPersistence projetsPersistence, IUnitOfWork uniteTravail,
+    ServiceAcces acces, IHorloge horloge, UniciteProjet unicite, ILecteurTsp lecteur,
     ConstructeurProjetCalcul constructeur, IEcrivainClasseur ecrivain, ServiceJournal journal)
 {
     /// <summary>Format d'enregistrement du contenu (mêmes noms qu'à l'écran).</summary>
@@ -36,8 +37,7 @@ public sealed class BrouillonsService(
     public async Task<IReadOnlyList<BrouillonResumeDto>> ListerAsync(CancellationToken annulation = default)
     {
         var u = await acces.UtilisateurAsync(annulation);
-        var brouillons = await db.Brouillons.AsNoTracking().Include(b => b.CreePar).Include(b => b.CoRedacteur)
-            .Where(b => b.CreeParId == u.Id || b.CoRedacteurId == u.Id).ToListAsync(annulation);
+        var brouillons = await persistence.ListerAvecPersonnesAsync(u.Id, annulation);
         var noms = await NomsAsync(brouillons.Select(b => b.ModifieParId), annulation);
         // tri en mémoire : certaines bases (SQLite des tests) ne savent pas trier des dates avec fuseau horaire
         return brouillons.OrderByDescending(b => b.ModifieLe).Select(b => new BrouillonResumeDto(
@@ -85,7 +85,7 @@ public sealed class BrouillonsService(
     public async Task<BrouillonDto> LireAsync(Guid id, CancellationToken annulation = default)
     {
         var u = await acces.UtilisateurAsync(annulation);
-        var b = await db.Brouillons.AsNoTracking().Include(x => x.CreePar).Include(x => x.CoRedacteur).FirstOrDefaultAsync(x => x.Id == id, annulation);
+        var b = await persistence.ObtenirAvecPersonnesAsync(id, annulation);
         if (b is null || !b.EstOuvertA(u.Id)) throw new IntrouvableException("Brouillon introuvable.");
         var contenu = Lire(b);
         var noms = await NomsAsync([b.ModifieParId], annulation);
@@ -109,8 +109,8 @@ public sealed class BrouillonsService(
         await ExigerVersionAsync(b, commande.Version, annulation);
         var contenu = Normaliser(commande.Contenu);
         Ecrire(b, contenu, u);
-        await db.SaveChangesAsync(annulation);
-        var auteur = (await db.Utilisateurs.AsNoTracking().FirstAsync(x => x.Id == b.CreeParId, annulation)).NomComplet;
+        await uniteTravail.CommitAsync(annulation);
+        var auteur = (await persistence.ObtenirUtilisateurAsync(b.CreeParId, annulation)).NomComplet;
         return new BrouillonEnregistreDto(b.Version, b.ModifieLe, await AnalyserAsync(contenu, auteur, annulation));
     }
 
@@ -124,15 +124,15 @@ public sealed class BrouillonsService(
         if (email.Length == 0)
         {
             b.CoRedacteurId = null;
-            await db.SaveChangesAsync(annulation);
+            await uniteTravail.CommitAsync(annulation);
             return new CoRedacteurReponse(null, b.Version);
         }
         var minuscules = email.ToLowerInvariant();
-        var invite = await db.Utilisateurs.FirstOrDefaultAsync(x => x.Email.ToLower() == minuscules && x.Actif, annulation)
+        var invite = await persistence.TrouverUtilisateurActifParEmailAsync(minuscules, annulation)
             ?? throw new RegleMetierException($"Personne n'utilise encore l'application avec l'adresse « {email} » : elle doit s'y être connectée au moins une fois.");
         if (invite.Id == u.Id) throw new RegleMetierException("Vous êtes déjà l'auteur de ce brouillon.");
         b.CoRedacteurId = invite.Id;
-        await db.SaveChangesAsync(annulation);
+        await uniteTravail.CommitAsync(annulation);
         // la version du brouillon a changé : l'écran la reprend pour ses prochains enregistrements
         return new CoRedacteurReponse(Personne(invite), b.Version);
     }
@@ -143,8 +143,8 @@ public sealed class BrouillonsService(
         var u = await acces.UtilisateurAsync(annulation);
         var b = await ChargerOuvertAsync(id, u, annulation);
         if (b.CreeParId != u.Id) throw new AccesRefuseException("Seul l'auteur du brouillon peut le supprimer.");
-        db.Brouillons.Remove(b);
-        await db.SaveChangesAsync(annulation);
+        persistence.Supprimer(b);
+        await uniteTravail.CommitAsync(annulation);
     }
 
     /// <summary>Le TSP au format Excel, à tout moment (mêmes onglets que le modèle, avec les formules de totaux ; réimportable tel quel).</summary>
@@ -153,7 +153,7 @@ public sealed class BrouillonsService(
         var u = await acces.UtilisateurAsync(annulation);
         var b = await ChargerOuvertAsync(id, u, annulation);
         var contenu = Lire(b);
-        var auteur = (await db.Utilisateurs.AsNoTracking().FirstAsync(x => x.Id == b.CreeParId, annulation)).NomComplet;
+        var auteur = (await persistence.ObtenirUtilisateurAsync(b.CreeParId, annulation)).NomComplet;
         ResultatCalcul? calcul = null;
         try { calcul = RedactionTsp.Calculer(contenu, Contexte(auteur), horloge.Maintenant); }
         catch (RegleMetierException) { /* TSP encore incomplet : export sans synthèse */ }
@@ -192,11 +192,11 @@ public sealed class BrouillonsService(
             {
                 ProjetId = projet.Id, UtilisateurId = co, Role = RoleProjet.Pilotage, Depuis = horloge.Maintenant, AccordeeParId = u.Id,
             });
-        db.Projets.Add(projet);
+        projetsPersistence.Ajouter(projet);
         journal.Noter(projet.Id, u.Id, "Projet", projet.Id, "Lancement", null,
             b.Origine == OrigineBrouillon.ImportTsp && b.Source is not null ? $"{RedactionTsp.NomSource} (repris de {b.Source})" : RedactionTsp.NomSource);
-        db.Brouillons.Remove(b);
-        await db.SaveChangesAsync(annulation);
+        persistence.Supprimer(b);
+        await uniteTravail.CommitAsync(annulation);
         return projet.Id;
     }
 
@@ -227,7 +227,7 @@ public sealed class BrouillonsService(
         if (string.IsNullOrWhiteSpace(client) && string.IsNullOrWhiteSpace(nom)) return;
         var cle = IdentiteProjet.Cle(reference, client, nom);
         // peu de brouillons à la fois : la comparaison se fait en mémoire, avec exactement la règle d'identité des projets
-        var autres = await db.Brouillons.AsNoTracking().Include(b => b.CreePar).Where(b => sauf == null || b.Id != sauf).ToListAsync(annulation);
+        var autres = await persistence.ListerAutresAvecAuteurAsync(sauf, annulation);
         var meme = autres.FirstOrDefault(b => IdentiteProjet.Cle(b.Reference, b.Client, b.Nom) == cle);
         if (meme is null) return;
         throw new RegleMetierException(meme.EstOuvertA(u.Id)
@@ -239,8 +239,8 @@ public sealed class BrouillonsService(
     {
         var b = new BrouillonProjet { Origine = origine, Source = source, CreeParId = u.Id, CreeLe = horloge.Maintenant };
         Ecrire(b, Normaliser(contenu), u);
-        db.Brouillons.Add(b);
-        await db.SaveChangesAsync(annulation);
+        persistence.Ajouter(b);
+        await uniteTravail.CommitAsync(annulation);
         return b.Id;
     }
 
@@ -258,7 +258,7 @@ public sealed class BrouillonsService(
 
     private async Task<BrouillonProjet> ChargerOuvertAsync(Guid id, Utilisateur u, CancellationToken annulation)
     {
-        var b = await db.Brouillons.FirstOrDefaultAsync(x => x.Id == id, annulation);
+        var b = await persistence.ObtenirPourModificationAsync(id, annulation);
         if (b is null || !b.EstOuvertA(u.Id)) throw new IntrouvableException("Brouillon introuvable.");
         return b;
     }
@@ -275,7 +275,7 @@ public sealed class BrouillonsService(
     {
         var liste = ids.Where(x => x is not null).Select(x => x!.Value).Distinct().ToList();
         if (liste.Count == 0) return new Dictionary<Guid, string>();
-        return (await db.Utilisateurs.AsNoTracking().Where(x => liste.Contains(x.Id)).ToListAsync(annulation)).ToDictionary(x => x.Id, x => x.NomComplet);
+        return await persistence.NomsUtilisateursAsync(liste, annulation);
     }
 
     private static string Tronquer(string s, int max) => s.Length <= max ? s : s[..(max - 1)] + "…";
