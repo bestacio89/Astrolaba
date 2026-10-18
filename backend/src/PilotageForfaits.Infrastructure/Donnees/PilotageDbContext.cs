@@ -61,8 +61,6 @@ public sealed class PilotageDbContext(
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Franz base behavior must run before Astrolaba-specific mapping invariants.
-        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PilotageDbContext).Assembly);
 
         // Numéro de version de chaque objet : sert à détecter deux modifications simultanées.
@@ -73,6 +71,9 @@ public sealed class PilotageDbContext(
         // (Évite aussi les « chemins de cascade multiples » refusés par SQL Server.)
         foreach (var lien in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()).Where(fk => !fk.IsOwnership))
             lien.DeleteBehavior = DeleteBehavior.Restrict;
+
+        // Run Franz's base behavior after all Astrolaba entities and relationships have been discovered.
+        base.OnModelCreating(modelBuilder);
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
