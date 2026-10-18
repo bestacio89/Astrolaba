@@ -1,43 +1,84 @@
-# Même intégration continue que .github/workflows/ci.yml, pour Azure DevOps (à garder si c'est l'outil retenu).
+# Build and test the backend and frontend, and verify the deterministic reference scenarios.
 trigger:
   branches:
-    include: ['*']
+    include:
+      - '*'
+
+pr:
+  branches:
+    include:
+      - '*'
 
 pool:
   vmImage: ubuntu-latest
 
 stages:
   - stage: Verification
-    displayName: Compilation et tests
+    displayName: Build and test
     jobs:
-      - job: Serveur
-        displayName: Serveur .NET
+      - job: Backend
+        displayName: .NET build, tests, and coverage
         steps:
+          - checkout: self
           - task: UseDotNet@2
+            displayName: Install .NET SDK from global.json
             inputs:
+              packageType: sdk
               useGlobalJson: true
-              workingDirectory: backend
+              workingDirectory: '$(Build.SourcesDirectory)/backend'
           - script: dotnet restore PilotageForfaits.sln
+            displayName: Restore
             workingDirectory: backend
           - script: dotnet build PilotageForfaits.sln --no-restore --configuration Release
+            displayName: Build
             workingDirectory: backend
-          - script: dotnet test PilotageForfaits.sln --no-build --configuration Release --logger trx --results-directory $(Agent.TempDirectory)/tests
+          - script: dotnet test PilotageForfaits.sln --no-build --configuration Release --logger trx --results-directory '$(Agent.TempDirectory)/tests' --collect:"XPlat Code Coverage"
+            displayName: Test and collect coverage
             workingDirectory: backend
           - task: PublishTestResults@2
+            displayName: Publish test results
             condition: always()
             inputs:
               testResultsFormat: VSTest
-              testResultsFiles: '$(Agent.TempDirectory)/tests/*.trx'
+              testResultsFiles: '$(Agent.TempDirectory)/tests/**/*.trx'
+              searchFolder: '$(Agent.TempDirectory)/tests'
+              failTaskOnFailedTests: true
+              testRunTitle: 'Backend tests'
+          - task: PublishCodeCoverageResults@2
+            displayName: Publish coverage
+            condition: always()
+            inputs:
+              summaryFileLocation: '$(Agent.TempDirectory)/tests/**/coverage.cobertura.xml'
+              failIfCoverageEmpty: false
 
-      - job: Interface
-        displayName: Interface Angular
+      - job: Frontend
+        displayName: Angular build and tests
         steps:
           - task: NodeTool@0
             inputs:
               versionSpec: '22.x'
           - script: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+            displayName: Install dependencies
             workingDirectory: frontend
           - script: npm run build
+            displayName: Build
             workingDirectory: frontend
           - script: npm test
+            displayName: Test
             workingDirectory: frontend
+
+      - job: ReferenceScenarios
+        displayName: Verify reference scenarios
+        steps:
+          - checkout: self
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '22.x'
+          - script: TODAY=2026-10-06 node outils/reference-poc/scenarios.cjs "$(Agent.TempDirectory)/reference"
+            displayName: Regenerate reference scenarios
+          - script: |
+              set -eu
+              for file in "$(Agent.TempDirectory)"/reference/*.json; do
+                diff -q "$file" "backend/tests/Donnees/$(basename "$file")"
+              done
+            displayName: Compare reference scenarios
