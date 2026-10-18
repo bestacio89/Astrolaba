@@ -37,6 +37,8 @@
     <PackageVersion Include="Franz.Common.Mediator" Version="2.3.0" />
     <PackageVersion Include="Franz.Common.Logging" Version="2.3.0" />
     <PackageVersion Include="Franz.Common.Mediator.Polly" Version="2.3.0" />
+    <PackageVersion Include="Franz.Common.Logging" Version="2.3.0" />
+    <PackageVersion Include="Franz.Common.Mediator.Polly" Version="2.3.0" />
     <PackageVersion Include="Franz.Common.EntityFramework" Version="2.3.0" />
     <!-- Corrections de sécurité de paquets utilisés indirectement (avis GitHub, octobre 2026) -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
