@@ -14,14 +14,14 @@ namespace PilotageForfaits.Infrastructure.Tests;
 
 /// <summary>
 /// Protects persistence invariants that must survive the Franz persistence migration.
-/// These tests inspect the EF model without requiring a running SQL Server instance.
+/// These tests inspect the EF model without requiring a running PostgreSQL instance.
 /// </summary>
 public sealed class PilotageDbContextModelTests
 {
     private static PilotageDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<PilotageDbContext>()
-            .UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=PilotageForfaitsModelTests;Trusted_Connection=True;")
+            .UseNpgsql("Host=localhost;Database=PilotageForfaitsModelTests;Username=postgres;Password=unused")
             .Options;
 
         var dispatcherServices = new ServiceCollection().BuildServiceProvider();
