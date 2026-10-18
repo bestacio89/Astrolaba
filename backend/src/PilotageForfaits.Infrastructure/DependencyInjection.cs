@@ -6,7 +6,6 @@ using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Infrastructure.Donnees;
 using PilotageForfaits.Infrastructure.Excel;
-using PilotageForfaits.Infrastructure.Persistence.Repositories;
 
 namespace PilotageForfaits.Infrastructure;
 
@@ -21,7 +20,6 @@ public static class DependencyInjection
         services.AddUnitOfWork<PilotageDbContext>();
         services.AddEntityRepositories<PilotageDbContext>();
         services.AddScoped<IContexteDonnees>(sp => sp.GetRequiredService<PilotageDbContext>());
-        services.AddScoped<IProjetRepository, ProjetRepository>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
