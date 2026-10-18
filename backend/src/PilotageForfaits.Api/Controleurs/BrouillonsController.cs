@@ -1,7 +1,7 @@
+using System.Text.Json.Nodes;
 using Franz.Common.Mediator.Dispatchers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Contracts.Exports;
 using PilotageForfaits.Contracts.Brouillons;
 using PilotageForfaits.Contracts.Projets;
@@ -15,7 +15,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [ApiController]
 [Authorize]
 [Route("api/brouillons")]
-public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsService brouillons) : ControllerBase
+public sealed class BrouillonsController(IDispatcher dispatcher) : ControllerBase
 {
     /// <summary>Mes brouillons (auteur ou co-rédacteur).</summary>
     [HttpGet]
@@ -41,13 +41,13 @@ public sealed class BrouillonsController(IDispatcher dispatcher, BrouillonsServi
     }
 
     [HttpGet("{id:guid}")]
-    public Task<BrouillonDto> Obtenir(Guid id, CancellationToken annulation) => brouillons.LireAsync(id, annulation);
+    public Task<JsonObject> Obtenir(Guid id, CancellationToken annulation) => dispatcher.SendAsync(new ObtenirBrouillonQuery(id), annulation);
 
     /// <summary>Enregistre le TSP en cours de rédaction (enregistrement automatique) et renvoie son analyse à jour.</summary>
     [HttpPut("{id:guid}")]
     [RequestSizeLimit(5 * 1024 * 1024)]
-    public Task<BrouillonEnregistreDto> Enregistrer(Guid id, EnregistrementBrouillonCommande commande, CancellationToken annulation) =>
-        brouillons.EnregistrerAsync(id, commande, annulation);
+    public Task<JsonObject> Enregistrer(Guid id, JsonObject commande, CancellationToken annulation) =>
+        dispatcher.SendAsync(new EnregistrerBrouillonCommand(id, commande), annulation);
 
     /// <summary>Invite (adresse e-mail) ou retire (adresse vide) le co-rédacteur.</summary>
     [HttpPut("{id:guid}/co-redacteur")]

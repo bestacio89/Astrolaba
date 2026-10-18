@@ -1,4 +1,5 @@
 using System.Reflection;
+using Franz.Common.Mediator.Dispatchers;
 using Franz.Common.Mediator.Handlers;
 using Franz.Common.Mediator.Messages;
 using Microsoft.AspNetCore.Mvc;
@@ -102,6 +103,26 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Api_controllers_must_dispatch_use_cases_instead_of_injecting_application_services()
+    {
+        var controllers = ApiAssembly.GetTypes()
+            .Where(type => type.IsClass &&
+                           type.Name.EndsWith("Controller", StringComparison.Ordinal) &&
+                           type.Namespace == "PilotageForfaits.Api.Controleurs")
+            .ToArray();
+
+        Assert.NotEmpty(controllers);
+        foreach (var controller in controllers)
+        {
+            var constructors = controller.GetConstructors();
+            Assert.Single(constructors);
+            var parameters = constructors[0].GetParameters();
+            Assert.Single(parameters);
+            Assert.Equal(typeof(IDispatcher), parameters[0].ParameterType);
+        }
+    }
+
+    [Fact]
     public void Api_must_remain_the_composition_root_for_infrastructure()
     {
         var references = ApiAssembly.GetReferencedAssemblies()
@@ -137,6 +158,10 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(ImporterTspCommandHandler)));
         Assert.True(typeof(ICommandHandler<CreerBrouillonCommand, Guid>)
             .IsAssignableFrom(typeof(CreerBrouillonCommandHandler)));
+        Assert.True(typeof(IQueryHandler<ObtenirBrouillonQuery, System.Text.Json.Nodes.JsonObject>)
+            .IsAssignableFrom(typeof(ObtenirBrouillonQueryHandler)));
+        Assert.True(typeof(ICommandHandler<EnregistrerBrouillonCommand, System.Text.Json.Nodes.JsonObject>)
+            .IsAssignableFrom(typeof(EnregistrerBrouillonCommandHandler)));
         Assert.True(typeof(ICommandHandler<SupprimerBrouillonCommand, bool>)
             .IsAssignableFrom(typeof(SupprimerBrouillonCommandHandler)));
         Assert.True(typeof(ICommandHandler<LancerBrouillonCommand, Guid>)

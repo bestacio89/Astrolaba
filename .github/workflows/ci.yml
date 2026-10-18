@@ -76,7 +76,7 @@ jobs:
           while kill -0 "$build_pid" 2>/dev/null; do
             if [[ "$success_seen" -eq 0 ]] &&
                grep -Fq "Application bundle generation complete." "$log_file" &&
-               [[ -f dist/pilotage-forfaits/index.html ]]; then
+               { [[ -f dist/pilotage-forfaits/index.html ]] || [[ -f dist/pilotage-forfaits/browser/index.html ]]; }; then
               success_seen=1
               echo "Angular reported successful bundle generation; allowing the CLI 10 seconds to exit."
               for _ in {1..10}; do
