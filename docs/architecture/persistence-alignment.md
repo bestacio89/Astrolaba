@@ -31,10 +31,13 @@ general-purpose delete lifecycle alongside Franz.
 
 `IContexteDonnees` still exposes EF Core `DbSet<T>` from Application, and application
 services still compose EF queries directly. This is not a clean persistence boundary.
-Replace it with focused application-facing ports whose contracts express use-case query
-and mutation needs; implement those ports in Infrastructure using EF Core and Franz
-repositories. Do not replace the context with a generic `IQueryable<T>` abstraction or
-load entire tables through generic repository methods.
+The first focused ports are now in place: `IRechercheIdentiteProjet` owns the project
+identity query in Infrastructure, and `IJournalWriter` appends journal entries to the
+current unit of work without committing early. The latter is important: journal rows
+must commit or roll back with the business mutation they describe. Continue replacing
+the context with use-case-specific ports implemented in Infrastructure using EF Core
+and Franz repositories. Do not replace the context with a generic `IQueryable<T>`
+abstraction or load entire tables through generic repository methods.
 
 Migrate cohesive workflows incrementally and preserve:
 - authorization and project visibility rules;
