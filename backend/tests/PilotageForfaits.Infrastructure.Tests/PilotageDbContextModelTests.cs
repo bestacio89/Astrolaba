@@ -163,9 +163,22 @@ public sealed class PilotageDbContextModelTests
         await context.SaveChangesAsync();
         var projectId = project.Id;
 
+        // A dependent row proves the permanent-delete path orders children before the project.
+        var field = new ChampFiche
+        {
+            ProjetId = projectId,
+            Libelle = "Client",
+            Valeur = "Example"
+        };
+        context.ChampsFiche.Add(field);
+        await context.SaveChangesAsync();
+        var fieldId = field.Id;
+
         await context.MarquerProjetPourSuppressionAsync(projectId);
         await context.SaveChangesAsync();
 
+        Assert.Null(await context.ChampsFiche.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(entity => entity.Id == fieldId));
         Assert.Null(await context.Projets.IgnoreQueryFilters()
             .SingleOrDefaultAsync(entity => entity.Id == projectId));
     }
