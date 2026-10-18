@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+using Franz.Common.Business.Repositories;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
@@ -14,7 +14,7 @@ namespace PilotageForfaits.Application.Securite;
 /// - Pilotage : voit tous les projets en lecture, montants compris ;
 /// - Lecteur : voit le projet, sans les montants.
 /// </summary>
-public sealed class ServiceAcces(IContexteDonnees db, IUtilisateurCourant courant, IHorloge horloge)
+public sealed class ServiceAcces(IAccesRepository persistence, IUnitOfWork uniteTravail, IUtilisateurCourant courant, IHorloge horloge)
 {
     private Utilisateur? _utilisateur;
 
@@ -26,11 +26,11 @@ public sealed class ServiceAcces(IContexteDonnees db, IUtilisateurCourant couran
         if (_utilisateur is not null) return _utilisateur;
         if (!courant.EstAuthentifie || string.IsNullOrEmpty(courant.IdentifiantExterne))
             throw new AccesRefuseException("Vous devez être connecté.");
-        var u = await db.Utilisateurs.FirstOrDefaultAsync(x => x.IdentifiantExterne == courant.IdentifiantExterne, annulation);
+        var u = await persistence.TrouverUtilisateurAsync(courant.IdentifiantExterne, annulation);
         if (u is null)
         {
             u = new Utilisateur { IdentifiantExterne = courant.IdentifiantExterne, CreeLe = horloge.Maintenant };
-            db.Utilisateurs.Add(u);
+            persistence.AjouterUtilisateur(u);
         }
         if (!u.Actif) throw new AccesRefuseException("Votre compte est désactivé dans l'application.");
         u.Prenom = courant.Prenom;
@@ -40,7 +40,7 @@ public sealed class ServiceAcces(IContexteDonnees db, IUtilisateurCourant couran
         // au plus une écriture par heure pour la date de dernière connexion (sinon chaque appel écrirait en base)
         if (u.DerniereConnexion is null || horloge.Maintenant - u.DerniereConnexion > TimeSpan.FromHours(1))
             u.DerniereConnexion = horloge.Maintenant;
-        await db.SaveChangesAsync(annulation); // n'écrit rien si rien n'a changé
+        await uniteTravail.CommitAsync(annulation); // n'écrit rien si rien n'a changé
         return _utilisateur = u;
     }
 
@@ -56,9 +56,8 @@ public sealed class ServiceAcces(IContexteDonnees db, IUtilisateurCourant couran
     public async Task<RoleProjet?> RoleSurProjetAsync(Guid projetId, CancellationToken annulation = default)
     {
         var u = await UtilisateurAsync(annulation);
-        var habilitation = await db.Habilitations.AsNoTracking()
-            .FirstOrDefaultAsync(h => h.ProjetId == projetId && h.UtilisateurId == u.Id, annulation);
-        if (habilitation is not null) return habilitation.Role;
+        var role = await persistence.TrouverRoleAsync(projetId, u.Id, annulation);
+        if (role is not null) return role;
         return VoitTousLesProjets ? RoleProjet.Pilotage : null;
     }
 
@@ -69,7 +68,7 @@ public sealed class ServiceAcces(IContexteDonnees db, IUtilisateurCourant couran
     public async Task<RoleProjet> ExigerAccesAsync(Guid projetId, CancellationToken annulation = default)
     {
         var role = await RoleSurProjetAsync(projetId, annulation);
-        if (role is null || !await db.Projets.AnyAsync(p => p.Id == projetId, annulation))
+        if (role is null || !await persistence.ProjetExisteAsync(projetId, annulation))
             throw new IntrouvableException("Projet introuvable.");
         return role.Value;
     }
@@ -92,7 +91,7 @@ public sealed class ServiceAcces(IContexteDonnees db, IUtilisateurCourant couran
 
     /// <summary>Projet archivé (lecture seule pour tous).</summary>
     public Task<bool> EstArchiveAsync(Guid projetId, CancellationToken annulation = default) =>
-        db.Projets.AnyAsync(p => p.Id == projetId && p.Statut == StatutProjet.Archive, annulation);
+        persistence.ProjetArchiveAsync(projetId, annulation);
 
     /// <summary>Un projet archivé est en lecture seule : il faut d'abord le restaurer.</summary>
     private async Task RefuserSiArchiveAsync(Guid projetId, CancellationToken annulation)
