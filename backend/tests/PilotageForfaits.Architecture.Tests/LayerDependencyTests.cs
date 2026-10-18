@@ -198,6 +198,13 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Tracking_read_query_must_have_a_Franz_handler()
+    {
+        Assert.True(typeof(IQueryHandler<ObtenirSuiviQuery, System.Text.Json.Nodes.JsonObject>)
+            .IsAssignableFrom(typeof(ObtenirSuiviQueryHandler)));
+    }
+
+    [Fact]
     public void Remaining_tracking_workflow_handlers_must_implement_Franz_contracts()
     {
         Assert.True(typeof(ICommandHandler<DefinirDateAtelierCommand, ResultatSaisieDto>)
