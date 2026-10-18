@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
@@ -9,7 +8,7 @@ namespace PilotageForfaits.Application.Suivi;
 /// Achats et frais réels (HT), rattachés au budget du TSP ou « hors TSP ». Ils alimentent la marge nette.
 /// Règles du POC : quantité et montant strictement positifs, coût unitaire et refacturé positifs ou nuls, date obligatoire.
 /// </summary>
-public sealed class DepensesService(SaisieOutils o)
+public sealed class DepensesService(SaisieOutils o, IDepensesPersistence persistence)
 {
     // ------------------------------------------------------------------ achats
 
@@ -28,7 +27,7 @@ public sealed class DepensesService(SaisieOutils o)
             LigneBudgetAchatId = await LigneAsync(projetId, c.Ligne, a), Quantite = c.Qte, CoutUnitaire = c.Cu, Refacture = c.Refacture ?? 0,
             Statut = Formats.StatutAchat(c.Statut), Commentaire = SaisieOutils.Nettoyer(c.Commentaire), CreeLe = o.Horloge.Maintenant, CreeParId = u.Id,
         };
-        o.Db.AchatsReels.Add(achat);
+        persistence.AjouterAchat(achat);
         o.Noter(projetId, u, "Achat", achat.Id, "création", null, $"{designation} {Formats.Euros(c.Qte * c.Cu)}");
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a, achat.Id.ToString(), m => new[]
         {
@@ -41,7 +40,7 @@ public sealed class DepensesService(SaisieOutils o)
     public async Task<ResultatSaisieDto> ModifierAchatAsync(Guid projetId, Guid id, ChampCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.AchatsReels.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Achat introuvable.");
+        var x = await persistence.ChargerAchatAsync(projetId, id, a) ?? throw new IntrouvableException("Achat introuvable.");
         SaisieOutils.VerifierVersion(x, c.Version, "L’achat");
         var v = c.Valeur;
         switch (c.Champ)
@@ -85,8 +84,8 @@ public sealed class DepensesService(SaisieOutils o)
     public async Task<ResultatSaisieDto> SupprimerAchatAsync(Guid projetId, Guid id, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.AchatsReels.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Achat introuvable.");
-        o.Db.AchatsReels.Remove(x);
+        var x = await persistence.ChargerAchatAsync(projetId, id, a) ?? throw new IntrouvableException("Achat introuvable.");
+        persistence.SupprimerAchat(x);
         o.Noter(projetId, u, "Achat", x.Id, "suppression", $"{x.Designation} {Formats.Euros(x.Quantite * x.CoutUnitaire)}", null);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
     }
@@ -106,7 +105,7 @@ public sealed class DepensesService(SaisieOutils o)
             Libelle = libelle, Montant = c.Montant, Refacturable = c.Refacturable, Commentaire = SaisieOutils.Nettoyer(c.Commentaire),
             CreeLe = o.Horloge.Maintenant, CreeParId = u.Id,
         };
-        o.Db.FraisReels.Add(frais);
+        persistence.AjouterFrais(frais);
         o.Noter(projetId, u, "Frais", frais.Id, "création", null, $"{libelle} {Formats.Euros(c.Montant)}");
         var message = new MessageDto($"Frais ajouté ({c.Montant.ToString("#,##0.00", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))} €).",
             "succes", "nouveau-frais", null, "+ Un autre");
@@ -116,7 +115,7 @@ public sealed class DepensesService(SaisieOutils o)
     public async Task<ResultatSaisieDto> ModifierFraisAsync(Guid projetId, Guid id, ChampCommande c, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.FraisReels.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Frais introuvable.");
+        var x = await persistence.ChargerFraisAsync(projetId, id, a) ?? throw new IntrouvableException("Frais introuvable.");
         SaisieOutils.VerifierVersion(x, c.Version, "Le frais");
         var v = c.Valeur;
         switch (c.Champ)
@@ -141,8 +140,8 @@ public sealed class DepensesService(SaisieOutils o)
     public async Task<ResultatSaisieDto> SupprimerFraisAsync(Guid projetId, Guid id, CancellationToken a)
     {
         var u = await o.ExigerChefAsync(projetId, a);
-        var x = await o.Db.FraisReels.FirstOrDefaultAsync(y => y.ProjetId == projetId && y.Id == id, a) ?? throw new IntrouvableException("Frais introuvable.");
-        o.Db.FraisReels.Remove(x);
+        var x = await persistence.ChargerFraisAsync(projetId, id, a) ?? throw new IntrouvableException("Frais introuvable.");
+        persistence.SupprimerFrais(x);
         o.Noter(projetId, u, "Frais", x.Id, "suppression", $"{x.Libelle} {Formats.Euros(x.Montant)}", null);
         return await o.TerminerAsync(projetId, new List<MessageDto>(), a);
     }
@@ -151,7 +150,7 @@ public sealed class DepensesService(SaisieOutils o)
     private async Task<Guid?> LigneAsync(Guid projetId, int? index, CancellationToken a)
     {
         if (index is null) return null;
-        var lignes = await o.Db.BudgetsAchats.Where(x => x.ProjetId == projetId).OrderBy(x => x.Ordre).Select(x => x.Id).ToListAsync(a);
+        var lignes = await persistence.ListerLignesBudgetAchatAsync(projetId, a);
         if (index < 0 || index >= lignes.Count) throw new IntrouvableException("Ligne du TSP introuvable.");
         return lignes[index.Value];
     }
