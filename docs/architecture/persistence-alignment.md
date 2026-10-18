@@ -41,23 +41,29 @@ created by mistake. It must remain explicit, authorization-protected, transactio
 atomic, dependency ordered, and tested against SQL Server. It must not become a second
 general-purpose delete lifecycle alongside Franz.
 
-## Application boundary still requires migration
+## Application boundary
 
-`IContexteDonnees` still exposes EF Core `DbSet<T>` from Application, and application
-services still compose EF queries directly. This is not a clean persistence boundary.
-Focused ports now isolate project-identity lookup (`IRechercheIdentiteProjet`),
-authorization/profile persistence (`IAccesRepository`), journal appends
-(`IJournalWriter`), project calculation input loading (`IChargeurDonneesProjet`),
-project list/detail/deletion persistence (`IProjetsPersistence`), and draft workflows
-(`IBrouillonsPersistence`). Journal entries
-are added to the current unit of work without an early commit so they commit or roll
-back with the business mutation they describe. Project calculation transformations and
-workflow authorization remain in Application; EF query composition stays in
-Infrastructure. Project creation and archive/restore rely on the mediator persistence
-behavior for their command commit. The exceptional permanent-delete workflow retains
-an explicit commit so successful physical deletion is confirmed before logging.
-Continue replacing the remaining context usages with use-case-specific ports. Do not replace the context with a generic `IQueryable<T>`
-abstraction or load entire tables through generic repository methods.
+Application no longer references the EF Core runtime and no longer exposes the legacy
+`IContexteDonnees`/DbSet abstraction. EF query composition and entity-state operations are
+implemented in Infrastructure behind focused ports.
+
+The ports isolate project-identity lookup (`IRechercheIdentiteProjet`), authorization/profile
+persistence (`IAccesRepository`), journal appends (`IJournalWriter`), project calculation input
+loading (`IChargeurDonneesProjet`), project list/detail/deletion persistence (`IProjetsPersistence`),
+draft workflows (`IBrouillonsPersistence`), tracking reads (`ISuiviPersistence`), and the remaining
+tracking writes (`ISaisieDonneesPersistence`). Other cohesive workflows use ports for exports,
+workshops/deliverables, expenses, invoicing, weekly tracking, planning references, registers,
+and project settings.
+
+Application retains authorization, calculations, domain decisions, and workflow orchestration.
+The tracking persistence port returns domain entities and exposes named query/write operations;
+it does not leak EF Core types, DbSet, IQueryable, or generic table access.
+
+Commit ownership is not yet fully consolidated. Tracking writes currently save through the
+focused persistence port, while some multi-step workflows retain explicit commit behavior.
+Review each command's transaction and journal semantics before removing those explicit commits
+or enabling the Franz transaction pipeline. A successful SaveChanges operation alone does not
+prove atomicity across a multi-step workflow.
 
 Migrate cohesive workflows incrementally and preserve:
 - authorization and project visibility rules;
