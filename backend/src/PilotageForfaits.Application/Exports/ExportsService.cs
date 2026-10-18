@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
 using PilotageForfaits.Application.Commun;
@@ -18,7 +17,7 @@ namespace PilotageForfaits.Application.Exports;
 /// un export par le pilotage, en lecture seule, ne modifie rien.
 /// </summary>
 public sealed partial class ExportsService(
-    IContexteDonnees db, ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge, IEcrivainClasseur ecrivain, ServiceJournal journal)
+    IExportsPersistence persistence, ServiceAcces acces, ConstructeurProjetCalcul constructeur, IHorloge horloge, IEcrivainClasseur ecrivain, ServiceJournal journal)
 {
     public async Task<FichierExport> CopilAsync(Guid projetId, CancellationToken a)
     {
@@ -51,28 +50,23 @@ public sealed partial class ExportsService(
         var u = await acces.UtilisateurAsync(a);
         var m = MoteurCalcul.Calculer(await constructeur.ChargerAsync(projetId, a), horloge.Aujourdhui);
         var date = horloge.Aujourdhui;
-        var photo = await db.PhotosIndicateurs.FirstOrDefaultAsync(p => p.ProjetId == projetId && p.Date == date && p.Nature == nature, a);
-        if (photo is null)
+        var photo = new PhotoIndicateurs
         {
-            photo = new PhotoIndicateurs { ProjetId = projetId, Date = date, Nature = nature };
-            db.PhotosIndicateurs.Add(photo);
-        }
-        photo.Prevu = Texte.Arrondir(m.Total.Prevu, 2);
-        photo.Consomme = Texte.Arrondir(m.Total.Conso, 2);
-        photo.ResteAFaire = Texte.Arrondir(m.Total.Raf, 2);
-        photo.Atterrissage = Texte.Arrondir(m.Total.Atterrissage, 2);
-        photo.CoutFinal = Texte.Arrondir(m.Financier.CoutFinal, 0);
-        photo.Marge = Texte.Arrondir(m.Financier.Marge, 0);
-        photo.MargeNette = Texte.Arrondir(m.Financier.MargeNette, 0);
-        photo.TauxMargeNette = Texte.Arrondir(m.Financier.TauxMargeNette, 4);
-        photo.FinPrevue = m.Cal.FinPrevue;
-        if (auCoproj is not null)
-        {
-            var projet = await db.Projets.FirstAsync(p => p.Id == projetId, a);
-            if (projet.Parametres.DernierCoproj is null || auCoproj > projet.Parametres.DernierCoproj) projet.Parametres.DernierCoproj = auCoproj;
-        }
+            ProjetId = projetId,
+            Date = date,
+            Nature = nature,
+            Prevu = Texte.Arrondir(m.Total.Prevu, 2),
+            Consomme = Texte.Arrondir(m.Total.Conso, 2),
+            ResteAFaire = Texte.Arrondir(m.Total.Raf, 2),
+            Atterrissage = Texte.Arrondir(m.Total.Atterrissage, 2),
+            CoutFinal = Texte.Arrondir(m.Financier.CoutFinal, 0),
+            Marge = Texte.Arrondir(m.Financier.Marge, 0),
+            MargeNette = Texte.Arrondir(m.Financier.MargeNette, 0),
+            TauxMargeNette = Texte.Arrondir(m.Financier.TauxMargeNette, 4),
+            FinPrevue = m.Cal.FinPrevue,
+        };
         journal.Noter(projetId, u.Id, "Export", projetId, nature == NaturePhoto.Copil ? "COPIL" : "COPROJ", null, Calendrier.Fr(date));
-        await db.SaveChangesAsync(a);
+        await persistence.EnregistrerPhotoAsync(photo, auCoproj, a);
     }
 
     private async Task<(ProjetVueDto Vue, ResultatCalcul Modele)> ChargerAsync(Guid projetId, CancellationToken a)
