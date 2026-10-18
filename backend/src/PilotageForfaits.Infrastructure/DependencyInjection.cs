@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
+using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Exports;
 using PilotageForfaits.Application.Projets;
 using PilotageForfaits.Infrastructure.Donnees;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IAccesRepository, AccesRepository>();
         services.AddScoped<IChargeurDonneesProjet, ChargeurDonneesProjet>();
         services.AddScoped<IProjetsPersistence, ProjetsPersistence>();
+        services.AddScoped<IBrouillonsPersistence, BrouillonsPersistence>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
