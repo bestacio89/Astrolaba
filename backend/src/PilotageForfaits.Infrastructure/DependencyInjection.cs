@@ -1,3 +1,4 @@
+using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.EntityFramework.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddUnitOfWork<PilotageDbContext>();
         services.AddEntityRepositories<PilotageDbContext>();
         services.AddScoped<IContexteDonnees>(sp => sp.GetRequiredService<PilotageDbContext>());
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
