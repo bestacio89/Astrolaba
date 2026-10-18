@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Handlers;
+using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Contracts.Brouillons;
 
 namespace PilotageForfaits.Application.Brouillons;
@@ -18,7 +19,7 @@ public sealed class EnregistrerBrouillonCommandHandler(BrouillonsService brouill
     public async Task<JsonObject> Handle(EnregistrerBrouillonCommand command, CancellationToken cancellationToken)
     {
         var donnees = command.Donnees.Deserialize<EnregistrementBrouillonCommande>(Json)
-            ?? throw new InvalidOperationException("La commande d'enregistrement du brouillon est invalide.");
+            ?? throw new RegleMetierException("La commande d'enregistrement du brouillon est invalide.");
         var resultat = await brouillons.EnregistrerAsync(command.BrouillonId, donnees, cancellationToken);
         return JsonSerializer.SerializeToNode(resultat, Json)!.AsObject();
     }
