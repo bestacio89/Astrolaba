@@ -44,8 +44,8 @@ public sealed class PilotageDbContextModelTests
 
             Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.IsDeleted)));
             Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.DateCreated)));
-            Assert.NotNull(entityType.FindProperty(nameof(IEntity<Guid>.CreatedBy)));
-            Assert.NotNull(entityType.GetQueryFilter());
+            Assert.NotNull(entityType.FindProperty(nameof(Entity<Guid>.CreatedBy)));
+            Assert.NotEmpty(entityType.GetDeclaredQueryFilters());
         });
     }
 
