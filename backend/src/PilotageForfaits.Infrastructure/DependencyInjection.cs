@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IAteliersLivrablesPersistence, AteliersLivrablesPersistence>();
         services.AddScoped<IDepensesPersistence, DepensesPersistence>();
         services.AddScoped<IFacturationPersistence, FacturationPersistence>();
+        services.AddScoped<IPointsHebdoPersistence, PointsHebdoPersistence>();
         services.AddSingleton<IHorloge, HorlogeSysteme>();
         services.AddScoped<ILecteurTsp, LecteurTsp>();
         services.AddSingleton<IEcrivainClasseur, EcrivainXlsx>();
