@@ -70,6 +70,17 @@ public sealed class LayerDependencyTests
     }
 
     [Fact]
+    public void Api_must_register_Franz_operational_observability_and_resilience()
+    {
+        var references = ApiAssembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains("Franz.Common.Logging", references);
+        Assert.Contains("Franz.Common.Mediator.Polly", references);
+    }
+
+    [Fact]
     public void Api_must_reference_application_directly()
     {
         var references = ApiAssembly.GetReferencedAssemblies()
