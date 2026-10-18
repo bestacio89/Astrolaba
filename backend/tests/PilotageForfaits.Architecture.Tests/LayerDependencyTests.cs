@@ -197,6 +197,95 @@ public sealed class LayerDependencyTests
             .IsAssignableFrom(typeof(AnnulerReaffectationTacheCommandHandler)));
     }
 
+    [Fact]
+    public void Remaining_tracking_workflow_handlers_must_implement_Franz_contracts()
+    {
+        Assert.True(typeof(ICommandHandler<DefinirDateAtelierCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDateAtelierCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirHoraireAtelierCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirHoraireAtelierCommandHandler)));
+        Assert.True(typeof(ICommandHandler<MarquerInvitationAtelierCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(MarquerInvitationAtelierCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirDateInvitationAtelierCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDateInvitationAtelierCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirDestinatairesAtelierCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDestinatairesAtelierCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirValidationClientLivrableCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirValidationClientLivrableCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirLienLivrableCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirLienLivrableCommandHandler)));
+        Assert.True(typeof(ICommandHandler<EnregistrerPointHebdoSemaineCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(EnregistrerPointHebdoSemaineCommandHandler)));
+        Assert.True(typeof(ICommandHandler<EnregistrerPointHebdoMoisCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(EnregistrerPointHebdoMoisCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ReglerPointHebdoCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ReglerPointHebdoCommandHandler)));
+        Assert.True(typeof(ICommandHandler<AjouterMiseAJourTacheCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(AjouterMiseAJourTacheCommandHandler)));
+        Assert.True(typeof(ICommandHandler<FigerReferenceProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(FigerReferenceProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirDeriveReferenceCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDeriveReferenceCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirDateEcheanceCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDateEcheanceCommandHandler)));
+        Assert.True(typeof(ICommandHandler<LierPerimetreEcheanceCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(LierPerimetreEcheanceCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirEcheancePhaseCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirEcheancePhaseCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerActionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(CreerActionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ModifierActionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ModifierActionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<RestaurerActionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(RestaurerActionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerActionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerActionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerDecisionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(CreerDecisionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ModifierDecisionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ModifierDecisionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerDecisionRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerDecisionRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerRisqueRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(CreerRisqueRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ModifierRisqueRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ModifierRisqueRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerRisqueRegistreCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerRisqueRegistreCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerAchatReelCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(CreerAchatReelCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ModifierAchatReelCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ModifierAchatReelCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerAchatReelCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerAchatReelCommandHandler)));
+        Assert.True(typeof(ICommandHandler<CreerFraisReelCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(CreerFraisReelCommandHandler)));
+        Assert.True(typeof(ICommandHandler<ModifierFraisReelCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(ModifierFraisReelCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerFraisReelCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerFraisReelCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirRegroupementProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirRegroupementProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirAlerteProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirAlerteProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirProfilIaProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirProfilIaProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirListeIaProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirListeIaProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirDatesProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirDatesProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<NommerAxeProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(NommerAxeProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<DefinirFicheProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(DefinirFicheProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<AjouterTypeProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(AjouterTypeProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<RenommerTypeProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(RenommerTypeProjetCommandHandler)));
+        Assert.True(typeof(ICommandHandler<SupprimerTypeProjetCommand, ResultatSaisieDto>)
+            .IsAssignableFrom(typeof(SupprimerTypeProjetCommandHandler)));
+    }
+
     private static void AssertNoProjectReferences(Assembly assembly, params string[] forbiddenReferences)
     {
         var references = assembly.GetReferencedAssemblies()
