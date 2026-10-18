@@ -17,7 +17,7 @@ namespace PilotageForfaits.Api.Controleurs;
 [Authorize]
 [Route("api/projets/{id:guid}")]
 public sealed class SuiviController(
-    IDispatcher dispatcher, SuiviService suivi, SaisiesTachesService taches, PerimetreService perimetre, AteliersLivrablesService ateliers,
+    IDispatcher dispatcher, SuiviService suivi, PerimetreService perimetre, AteliersLivrablesService ateliers,
     FacturationService facturation, RegistresService registres, DepensesService depenses, ParametresService parametres,
     ReferencesService references, MisesAJourService misesAJour, PointsHebdoService pointsHebdo)
     : ControllerBase
@@ -29,35 +29,35 @@ public sealed class SuiviController(
     // ---------------------------------------------------------------- tâches
 
     [HttpPut("taches/{uid}/statut")]
-    public Task<ResultatSaisieDto> Statut(Guid id, string uid, StatutCommande c, CancellationToken a) => taches.DefinirStatutAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Statut(Guid id, string uid, StatutCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirStatutTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/avancement")]
-    public Task<ResultatSaisieDto> Avancement(Guid id, string uid, AvancementCommande c, CancellationToken a) => taches.DefinirAvancementAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Avancement(Guid id, string uid, AvancementCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirAvancementTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/reste-a-faire")]
-    public Task<ResultatSaisieDto> ResteAFaire(Guid id, string uid, ResteAFaireCommande c, CancellationToken a) => taches.DefinirResteAFaireAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> ResteAFaire(Guid id, string uid, ResteAFaireCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirResteAFaireTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/dates")]
-    public Task<ResultatSaisieDto> Dates(Guid id, string uid, DatesTacheCommande c, CancellationToken a) => taches.DefinirDatesAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Dates(Guid id, string uid, DatesTacheCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirDatesTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/libelle")]
-    public Task<ResultatSaisieDto> Libelle(Guid id, string uid, LibelleCommande c, CancellationToken a) => taches.DefinirLibelleAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Libelle(Guid id, string uid, LibelleCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirLibelleTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/commentaire")]
-    public Task<ResultatSaisieDto> Commentaire(Guid id, string uid, CommentaireCommande c, CancellationToken a) => taches.DefinirCommentaireAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Commentaire(Guid id, string uid, CommentaireCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirCommentaireTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/classement")]
-    public Task<ResultatSaisieDto> Classement(Guid id, string uid, ClassementCommande c, CancellationToken a) => taches.DefinirClassementAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Classement(Guid id, string uid, ClassementCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirClassementTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/bilan-ia")]
-    public Task<ResultatSaisieDto> BilanIa(Guid id, string uid, BilanIaCommande c, CancellationToken a) => taches.DefinirBilanIaAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> BilanIa(Guid id, string uid, BilanIaCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirBilanIaTacheCommand(id, uid, c), a);
 
     [HttpPut("taches/{uid}/echeance")]
-    public Task<ResultatSaisieDto> EcheanceTache(Guid id, string uid, EcheanceTacheCommande c, CancellationToken a) => taches.DefinirEcheanceAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> EcheanceTache(Guid id, string uid, EcheanceTacheCommande c, CancellationToken a) => dispatcher.SendAsync(new DefinirEcheanceTacheCommand(id, uid, c), a);
 
     /// <summary>Consommé d'un profil sur une tâche, un jour donné (chef de projet ou consultant).</summary>
     [HttpPut("taches/{uid}/consomme")]
-    public Task<ResultatSaisieDto> Consomme(Guid id, string uid, ConsommeCommande c, CancellationToken a) => taches.SaisirConsommeAsync(id, uid, c, a);
+    public Task<ResultatSaisieDto> Consomme(Guid id, string uid, ConsommeCommande c, CancellationToken a) => dispatcher.SendAsync(new SaisirConsommeTacheCommand(id, uid, c), a);
 
     // ---------------------------------------------------------------- périmètre
 
