@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Handlers;
 using PilotageForfaits.Contracts.Brouillons;
 
@@ -9,7 +10,10 @@ namespace PilotageForfaits.Application.Brouillons;
 public sealed class ObtenirBrouillonQueryHandler(BrouillonsService brouillons)
     : IQueryHandler<ObtenirBrouillonQuery, JsonObject>
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     public async Task<JsonObject> Handle(ObtenirBrouillonQuery query, CancellationToken cancellationToken)
     {
