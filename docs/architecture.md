@@ -12,10 +12,15 @@
 
 | Couche | Projet | Contient | Dépend de |
 |---|---|---|---|
-| API | `PilotageForfaits.Api` | Contrôleurs REST, authentification (Entra ID ou utilisateurs de développement), traduction des erreurs en réponses HTTP, description OpenAPI | Application, Infrastructure (pour l'assemblage) |
+| API | `PilotageForfaits.Api` | Contrôleurs REST, authentification (Entra ID ou utilisateurs de développement), traduction des erreurs en réponses HTTP, description OpenAPI, assemblage des dépendances | Contracts, Application, Infrastructure (composition root) |
+| Contrats HTTP | `PilotageForfaits.Contracts` | Modèles de requête et enveloppes de réponse HTTP stables, indépendants des autres projets backend | rien |
 | Application | `PilotageForfaits.Application` | Cas d'usage : lister les projets, créer un projet vide, importer un TSP, vue d'ensemble ; contrôle des droits (`ServiceAcces`) ; passage base ↔ moteur (`ConstructeurProjetCalcul`) | Domaine |
 | Domaine | `PilotageForfaits.Domain` | Entités du modèle de données, règles métier, **moteur de calcul** (`Calcul/MoteurCalcul.cs`), **lecture du TSP** (`Tsp/InterpreteurTsp.cs`) | rien |
 | Infrastructure | `PilotageForfaits.Infrastructure` | Base de données (EF Core + SQL Server), lecture des fichiers Excel (`Excel/ClasseurXlsx.cs`), horloge | Application |
+
+Les modèles de création HTTP sont sortis des contrôleurs vers Contracts sans modifier les noms de propriétés JSON. La séparation est volontairement incrémentale : les DTO de lecture et de suivi restent encore dans Application, car certains exposent directement des types du domaine de calcul. Leur migration complète exige de définir des modèles de transport indépendants et des mappings explicites, plutôt que de publier les objets métier tels quels.
+
+Les tests d'architecture dans `PilotageForfaits.Architecture.Tests` rendent exécutables les principales règles de dépendance. Les pipelines GitHub Actions et Azure DevOps doivent exécuter les tests du serveur, les tests de l'interface et la comparaison des scénarios de référence.
 
 Choix assumé pour rester simple : les services de l'Application utilisent directement les requêtes EF Core (via `IContexteDonnees`), sans couche « dépôt » supplémentaire.
 

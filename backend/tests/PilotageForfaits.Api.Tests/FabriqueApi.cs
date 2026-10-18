@@ -88,15 +88,13 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>Crée la base (une seule fois) avant le premier test.</summary>
+    /// <summary>Recrée la base SQLite pour isoler chaque test de l'état laissé par les tests précédents.</summary>
     public void PreparerBase()
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<PilotageDbContext>();
+        db.Database.EnsureDeleted();
         db.Database.EnsureCreated();
-        // chaque test part d'une base sans projet : un même TSP ne peut être importé qu'une fois (unicité des projets)
-        foreach (var id in db.Projets.Select(p => p.Id).ToList()) db.MarquerProjetPourSuppressionAsync(id).GetAwaiter().GetResult();
-        db.SaveChanges();
     }
 
     protected override void Dispose(bool disposing)

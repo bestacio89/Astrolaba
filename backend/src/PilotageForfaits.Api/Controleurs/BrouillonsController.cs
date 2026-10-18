@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PilotageForfaits.Application.Brouillons;
 using PilotageForfaits.Application.Exports;
+using PilotageForfaits.Contracts.Brouillons;
+using PilotageForfaits.Contracts.Projets;
 
 namespace PilotageForfaits.Api.Controleurs;
 
@@ -75,4 +77,3 @@ public sealed class BrouillonsController(BrouillonsService brouillons) : Control
     }
 }
 
-public sealed record BrouillonCreeReponse(Guid Id);

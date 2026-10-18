@@ -63,7 +63,7 @@ public static class InterpreteurTsp
             if (m.Success) { debut = Calendrier.LireDateFr(m.Groups[1].Value); fin = Calendrier.LireDateFr(m.Groups[2].Value); }
         }
         if (debut is null || fin is null)
-            warnings.Add("Période du projet absente du TSP : renseignez le début et la fin dans ⚙ Paramètres du projet › Dates du projet.");
+            warnings.Add("Période du projet absente du TSP : renseignez le début et la fin dans ⚙ Paramètres › Dates du projet.");
 
         // --- PROFIL ---
         var hdr = -1;

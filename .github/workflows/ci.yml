@@ -1,14 +1,20 @@
-# Intégration continue : à chaque envoi (push) et à chaque demande de fusion (pull request),
-# on compile tout et on lance tous les tests. Une étape rouge = on ne fusionne pas.
-name: Intégration continue
+# Validate backend, frontend, and deterministic reference scenarios on every push and pull request.
+name: CI
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  serveur:
-    name: Serveur .NET (compilation et tests)
+  backend:
+    name: .NET build, tests, and coverage
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,17 +24,23 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: backend/global.json
-      - run: dotnet restore PilotageForfaits.sln
-      - run: dotnet build PilotageForfaits.sln --no-restore --configuration Release
-      - run: dotnet test PilotageForfaits.sln --no-build --configuration Release --logger "trx;LogFileName=resultats.trx" --results-directory resultats-tests
-      - uses: actions/upload-artifact@v4
+      - name: Restore
+        run: dotnet restore PilotageForfaits.sln
+      - name: Build
+        run: dotnet build PilotageForfaits.sln --no-restore --configuration Release
+      - name: Test and collect coverage
+        run: dotnet test PilotageForfaits.sln --no-build --configuration Release --logger trx --results-directory resultats-tests --collect:"XPlat Code Coverage"
+      - name: Publish test and coverage results
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: resultats-tests-serveur
-          path: backend/resultats-tests
+          name: backend-test-results
+          path: backend/resultats-tests/
+          if-no-files-found: warn
+          retention-days: 14
 
-  interface:
-    name: Interface Angular (compilation et tests)
+  frontend:
+    name: Angular build and tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,22 +50,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # « npm ci » dès que package-lock.json est enregistré dans le dépôt (installation reproductible)
-      - run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - run: npm run build
-      - run: npm test
+      - name: Install dependencies
+        run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm test
 
   reference:
-    name: Données de référence (moteur de la version de référence)
+    name: Verify reference scenarios
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Recalcule les résultats attendus avec le moteur du POC et vérifie qu'ils sont identiques à ceux du dépôt.
-      - run: TODAY=2026-10-06 node outils/reference-poc/scenarios.cjs "$RUNNER_TEMP/reference"
-      - run: |
-          for f in "$RUNNER_TEMP"/reference/*.json; do
-            diff -q "$f" "backend/tests/Donnees/$(basename "$f")"
+      - name: Regenerate reference scenarios
+        run: TODAY=2026-10-06 node outils/reference-poc/scenarios.cjs "$RUNNER_TEMP/reference"
+      - name: Compare reference scenarios
+        run: |
+          set -eu
+          for file in "$RUNNER_TEMP"/reference/*.json; do
+            diff -q "$file" "backend/tests/Donnees/$(basename "$file")"
           done
