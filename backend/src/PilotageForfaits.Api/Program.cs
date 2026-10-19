@@ -71,9 +71,10 @@ var app = builder.Build();
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 
 app.UseHttpsRedirection();
-app.UseHttpArchitecture();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (env.IsDevelopment())
 {
