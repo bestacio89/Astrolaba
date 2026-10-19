@@ -70,9 +70,8 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 
-// The exception boundary must wrap the complete request pipeline, including Franz middleware.
-app.UseExceptionHandler();
 app.UseHttpArchitecture();
+app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
