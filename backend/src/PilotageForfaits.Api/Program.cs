@@ -70,6 +70,7 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 
+app.UseHttpsRedirection();
 app.UseHttpArchitecture();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -83,9 +84,6 @@ if (env.IsDevelopment())
     await initializer.InitialiserAsync();
 }
 
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/api/sante", () => Results.Ok(new { statut = "ok" })).AllowAnonymous();
 
