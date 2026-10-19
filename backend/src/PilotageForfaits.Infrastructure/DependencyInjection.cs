@@ -1,8 +1,5 @@
 using Franz.Common.EntityFramework;
-using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.EntityFramework.Extensions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Calcul;
@@ -18,16 +15,9 @@ namespace PilotageForfaits.Infrastructure;
 
 public static class DependencyInjection
 {
-    /// <summary>Déclare la base de données, la lecture des TSP, l'écriture des exports Excel et l'horloge.</summary>
-    public static IServiceCollection AjouterInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    /// <summary>Déclare les services de persistance propres à Astrolaba, la lecture des TSP et l'écriture des exports Excel.</summary>
+    public static IServiceCollection AjouterInfrastructure(this IServiceCollection services)
     {
-        var chaine = configuration.GetConnectionString("Pilotage")
-            ?? throw new InvalidOperationException("Chaîne de connexion « ConnectionStrings:Pilotage » absente de la configuration.");
-        if (string.IsNullOrWhiteSpace(chaine))
-            throw new InvalidOperationException("La chaîne de connexion « ConnectionStrings:Pilotage » est vide. Configurez-la via les secrets de développement ou ConnectionStrings__Pilotage.");
-
-        services.AddDbContext<PilotageDbContext>(o =>
-            o.UseNpgsql(chaine, postgres => postgres.EnableRetryOnFailure()));
         services.AddScoped<IInitialiseurBaseDeDeveloppement, InitialiseurBaseDeDeveloppement>();
         services.AddUnitOfWork<PilotageDbContext>();
         services.AddScoped<DbContextBase>(sp => sp.GetRequiredService<PilotageDbContext>());
