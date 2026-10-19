@@ -25,15 +25,19 @@ internal sealed class AccesRepository(PilotageDbContext db) : IAccesRepository
         db.Utilisateurs.Add(utilisateur);
     }
 
-    public Task<bool> EstAffecteAuProjetAsync(
+    public async Task<RoleProjet?> TrouverRoleAsync(
         Guid projetId,
         Guid utilisateurId,
-        CancellationToken annulation = default) =>
-        db.Habilitations
+        CancellationToken annulation = default)
+    {
+        var habilitation = await db.Habilitations
             .AsNoTracking()
-            .AnyAsync(
-                habilitation => habilitation.ProjetId == projetId && habilitation.UtilisateurId == utilisateurId,
+            .FirstOrDefaultAsync(
+                droit => droit.ProjetId == projetId && droit.UtilisateurId == utilisateurId,
                 annulation);
+
+        return habilitation?.Role;
+    }
 
     public Task<bool> ProjetExisteAsync(Guid projetId, CancellationToken annulation = default) =>
         db.Projets.AnyAsync(projet => projet.Id == projetId, annulation);
