@@ -23,7 +23,7 @@ public sealed class OptionsAuthentificationDev : AuthenticationSchemeOptions
 
 /// <summary>
 /// Authentification de DÉVELOPPEMENT uniquement : l'utilisateur est choisi par l'en-tête « X-Utilisateur-Dev »
-/// (sinon le premier de la liste). Interdite hors environnement de développement ou de test (contrôle dans Program.cs).
+/// (absence d’en-tête : anonyme). Interdite hors environnement de développement ou de test (contrôle dans Program.cs).
 /// </summary>
 public sealed class AuthentificationDev(IOptionsMonitor<OptionsAuthentificationDev> options, ILoggerFactory logger, UrlEncoder encoder)
     : AuthenticationHandler<OptionsAuthentificationDev>(options, logger, encoder)
@@ -34,8 +34,12 @@ public sealed class AuthentificationDev(IOptionsMonitor<OptionsAuthentificationD
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var cle = Request.Headers[EnTete].FirstOrDefault();
-        var u = string.IsNullOrEmpty(cle) ? Options.Utilisateurs.FirstOrDefault() : Options.Utilisateurs.FirstOrDefault(x => x.Cle == cle);
-        if (u is null) return Task.FromResult(AuthenticateResult.Fail("Utilisateur de développement inconnu."));
+        if (string.IsNullOrWhiteSpace(cle))
+            return Task.FromResult(AuthenticateResult.NoResult());
+
+        var u = Options.Utilisateurs.FirstOrDefault(x => x.Cle == cle);
+        if (u is null)
+            return Task.FromResult(AuthenticateResult.Fail("Utilisateur de développement inconnu."));
         var claims = new List<Claim>
         {
             new("oid", u.Oid),
