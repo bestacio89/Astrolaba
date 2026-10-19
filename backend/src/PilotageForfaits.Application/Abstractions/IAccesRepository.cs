@@ -13,7 +13,7 @@ public interface IAccesRepository
 
     void AjouterUtilisateur(Utilisateur utilisateur);
 
-    Task<RoleProjet?> TrouverRoleAsync(Guid projetId, Guid utilisateurId, CancellationToken annulation = default);
+    Task<bool> EstAffecteAuProjetAsync(Guid projetId, Guid utilisateurId, CancellationToken annulation = default);
 
     Task<bool> ProjetExisteAsync(Guid projetId, CancellationToken annulation = default);
 
