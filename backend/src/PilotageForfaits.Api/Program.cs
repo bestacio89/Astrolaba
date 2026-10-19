@@ -40,7 +40,9 @@ builder.Services.AddFranzMediatorV2Default(null, typeof(ArchiverProjetCommandHan
 builder.Services.AddFranzResilience(config);
 builder.Services.AddHttpArchitecture(env, config);
 
-builder.Services.Configure<GroupesEntraConfiguration>(config.GetSection("Authentification:GroupesEntra"));
+var groupesEntra = config.GetSection("Authentification:GroupesEntra").Get<GroupesEntraConfiguration>()
+    ?? new GroupesEntraConfiguration();
+builder.Services.AddSingleton(groupesEntra);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();
@@ -73,8 +75,7 @@ else
                 "La configuration Entra ID est incomplète. Configurez AzureAd:TenantId, AzureAd:ClientId et AzureAd:Audience via la configuration de déploiement.");
         }
 
-        var groupesEntra = config.GetSection("Authentification:GroupesEntra").Get<GroupesEntraConfiguration>();
-        var auMoinsUnGroupeConfigure = groupesEntra is not null &&
+        var auMoinsUnGroupeConfigure =
             new[]
             {
                 groupesEntra.Consultant, groupesEntra.ChefDeProjet, groupesEntra.Pilotage,
