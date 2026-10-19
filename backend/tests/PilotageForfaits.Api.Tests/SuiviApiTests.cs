@@ -39,7 +39,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
 
     private static async Task<Guid> ImporterAsync(HttpClient client)
     {
-        var reponse = await client.PostAsync("/api/projets/import-tsp", FichierTsp());
+        var reponse = await client.PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         Assert.Equal(HttpStatusCode.Created, reponse.StatusCode);
         return (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
     }
@@ -89,7 +89,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        string U(string chemin) => $"/api/projets/{id}/{chemin}";
+        string U(string chemin) => $"/api/v1/projets/{id}/{chemin}";
         var suivi = await client.GetFromJsonAsync<JsonObject>(U("suivi"));
         var profils = suivi!["projet"]!["profiles"]!.AsArray().Select(p => p!["id"]!.GetValue<Guid>()).ToList();
 
@@ -260,10 +260,10 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         var profil = suivi!["projet"]!["profiles"]!.AsArray()[2]!["id"]!.GetValue<Guid>();
-        await Saisir(client, HttpMethod.Put, $"/api/projets/{id}/taches/r20/consomme", new { profilId = profil, jour = "2026-09-08", jh = 0.5m });
-        var message = await Refuser(client, HttpMethod.Put, $"/api/projets/{id}/taches/r22/consomme",
+        await Saisir(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r20/consomme", new { profilId = profil, jour = "2026-09-08", jh = 0.5m });
+        var message = await Refuser(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r22/consomme",
             new { profilId = profil, jour = "2026-09-08", jh = 0.75m }, HttpStatusCode.UnprocessableEntity);
         Assert.Contains("il reste 0,5 JH", message);
     }
@@ -273,16 +273,16 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         var profil = suivi!["projet"]!["profiles"]!.AsArray()[0]!["id"]!.GetValue<Guid>();
-        var r = await Saisir(client, HttpMethod.Put, $"/api/projets/{id}/taches/r7/consomme", new { profilId = profil, jour = "2026-09-10", jh = 0.5m });
+        var r = await Saisir(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/consomme", new { profilId = profil, jour = "2026-09-10", jh = 0.5m });
         Assert.Contains(r["messages"]!.AsArray(), m => m!["texte"]!.GetValue<string>().Contains("En cours"));
         var tache = (JsonObject t) => t["suivi"]!["modele"]!["tasks"]!.AsArray().First(x => x!["uid"]!.GetValue<string>() == "r7")!;
         Assert.Equal("En cours", tache(r)["statut"]!.GetValue<string>());
-        r = await Saisir(client, HttpMethod.Put, $"/api/projets/{id}/taches/r7/statut", new { statut = "Validé" });
+        r = await Saisir(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/statut", new { statut = "Validé" });
         Assert.Equal(1m, tache(r)["avancement"]!.GetValue<decimal>());
         Assert.Equal(0m, tache(r)["raf"]!.GetValue<decimal>());
-        r = await Saisir(client, HttpMethod.Put, $"/api/projets/{id}/taches/r7/avancement", new { avancement = 0.5m });
+        r = await Saisir(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/avancement", new { avancement = 0.5m });
         Assert.Equal("En cours", tache(r)["statut"]!.GetValue<string>());
     }
 
@@ -291,7 +291,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var url = $"/api/projets/{id}/taches/r13";
+        var url = $"/api/v1/projets/{id}/taches/r13";
         var r = await Saisir(client, HttpMethod.Post, $"{url}/annulation", new { motif = "Hors périmètre", avenant = true, enregistrerDecision = true });
         Assert.Single(r["suivi"]!["projet"]!["decisions"]!.AsArray()); // décision enregistrée au registre
         await Refuser(client, HttpMethod.Put, $"{url}/statut", new { statut = "En cours" }, HttpStatusCode.UnprocessableEntity);
@@ -305,7 +305,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var url = $"/api/projets/{id}/echeances/1/dates";
+        var url = $"/api/v1/projets/{id}/echeances/1/dates";
         await Refuser(client, HttpMethod.Put, url, new { champ = "payeeLe", valeur = "2026-10-01" }, HttpStatusCode.UnprocessableEntity);
         await Refuser(client, HttpMethod.Put, url, new { champ = "realiseLe", valeur = "2026-10-07" }, HttpStatusCode.UnprocessableEntity); // futur
         var r = await Saisir(client, HttpMethod.Put, url, new { champ = "realiseLe", valeur = "2026-10-01" });
@@ -319,10 +319,10 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         var version = suivi!["projet"]!["tasks"]!.AsArray().First(t => t!["uid"]!.GetValue<string>() == "r7")!["version"]!.GetValue<int>();
-        await Saisir(client, HttpMethod.Put, $"/api/projets/{id}/taches/r7/commentaire", new { commentaire = "Premier", version });
-        await Refuser(client, HttpMethod.Put, $"/api/projets/{id}/taches/r7/commentaire", new { commentaire = "Second", version }, HttpStatusCode.Conflict);
+        await Saisir(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/commentaire", new { commentaire = "Premier", version });
+        await Refuser(client, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/commentaire", new { commentaire = "Second", version }, HttpStatusCode.Conflict);
     }
 
     // ------------------------------------------------------------------ référence, livrable, fil des tâches
@@ -332,7 +332,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        string U(string chemin) => $"/api/projets/{id}/{chemin}";
+        string U(string chemin) => $"/api/v1/projets/{id}/{chemin}";
         await Saisir(client, HttpMethod.Put, U("taches/r33/dates"), new { debut = "2026-10-12", fin = "2026-11-06" });
         var r = await Saisir(client, HttpMethod.Post, U("references"), new { libelle = "" });
         var reference = r["suivi"]!["projet"]!["references"]!.AsArray().Single()!;
@@ -360,7 +360,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var url = $"/api/projets/{id}/taches/r7/livrable/lien";
+        var url = $"/api/v1/projets/{id}/taches/r7/livrable/lien";
         await Refuser(client, HttpMethod.Put, url, new { lien = "javascript:alert(1)" }, HttpStatusCode.UnprocessableEntity);
         await Refuser(client, HttpMethod.Put, url, new { lien = "C:\\Documents\\livrable.docx" }, HttpStatusCode.UnprocessableEntity);
         var r = await Saisir(client, HttpMethod.Put, url, new { lien = "https://exemple.sharepoint.com/sites/projet/livrable.docx" });
@@ -374,11 +374,11 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var chef = _api.ClientPour("chef");
         var id = await ImporterAsync(chef);
-        var url = $"/api/projets/{id}/taches/r7/mises-a-jour";
+        var url = $"/api/v1/projets/{id}/taches/r7/mises-a-jour";
         await Refuser(chef, HttpMethod.Post, url, new { texte = "   " }, HttpStatusCode.UnprocessableEntity);
         await Saisir(chef, HttpMethod.Post, url, new { texte = "Atelier décalé, budget déplacement 1 200 €" });
         var consultant = _api.ClientPour("consultant");
-        await consultant.GetAsync("/api/moi");
+        await consultant.GetAsync("/api/v1/moi");
         await ModifierBaseAsync(async db =>
         {
             var u = await db.Utilisateurs.FirstAsync(x => x.IdentifiantExterne == "oid-consultant");
@@ -408,8 +408,8 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var url = $"/api/projets/{id}/taches/r7";
-        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        var url = $"/api/v1/projets/{id}/taches/r7";
+        var suivi = await client.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         var profils = suivi!["projet"]!["profiles"]!.AsArray();
         var chef = profils[0]!["id"]!.GetValue<Guid>();    // Chef de Projet — CDP, CJM 378, 2 JH prévus sur r7 (+ 1 JH d’enveloppe IA)
         var expert = profils[1]!["id"]!.GetValue<Guid>();  // Expert IA, CJM 405
@@ -459,7 +459,7 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var client = _api.ClientPour("chef");
         var id = await ImporterAsync(client);
-        var url = $"/api/projets/{id}/points-hebdo";
+        var url = $"/api/v1/projets/{id}/points-hebdo";
         var saisie = new
         {
             actualites = new[] { " Atelier de cadrage réalisé ", "", "Recette du lot 1 en préparation" },
@@ -505,21 +505,21 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
         var chef = _api.ClientPour("chef");
         var id = await ImporterAsync(chef);
         // saisies du chef qui écrivent des montants dans le journal et dans un commentaire de décision
-        await Saisir(chef, HttpMethod.Post, $"/api/projets/{id}/achats", new
+        await Saisir(chef, HttpMethod.Post, $"/api/v1/projets/{id}/achats", new
         {
             date = "2026-09-20", ligne = (int?)null, designation = "Matériel", fournisseur = "Revendeur", qte = 1m, cu = 500m, refacture = 0m, statut = "Reçu",
         });
-        await Saisir(chef, HttpMethod.Post, $"/api/projets/{id}/taches/r14/annulation", new { motif = "Doublon", avenant = true, enregistrerDecision = true });
+        await Saisir(chef, HttpMethod.Post, $"/api/v1/projets/{id}/taches/r14/annulation", new { motif = "Doublon", avenant = true, enregistrerDecision = true });
         // habilitation du consultant (l'écran d'administration des habilitations viendra plus tard)
         var consultant = _api.ClientPour("consultant");
-        await consultant.GetAsync("/api/moi"); // crée sa fiche
+        await consultant.GetAsync("/api/v1/moi"); // crée sa fiche
         await ModifierBaseAsync(async db =>
         {
             var u = await db.Utilisateurs.FirstAsync(x => x.IdentifiantExterne == "oid-consultant");
             db.Habilitations.Add(new Habilitation { ProjetId = id, UtilisateurId = u.Id, Role = RoleProjet.Consultant, Depuis = DateTimeOffset.UtcNow });
         });
 
-        var texte = await consultant.GetStringAsync($"/api/projets/{id}/suivi");
+        var texte = await consultant.GetStringAsync($"/api/v1/projets/{id}/suivi");
         var suivi = JsonNode.Parse(texte)!.AsObject();
         Assert.False(suivi["droits"]!["voitMontants"]!.GetValue<bool>());
         Assert.True(suivi["droits"]!["peutSaisirConsomme"]!.GetValue<bool>());
@@ -535,9 +535,9 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
         Assert.NotEmpty(suivi["projet"]!["decisions"]!.AsArray()); // la décision d'annulation reste visible, sans ses montants
 
         var profil = suivi["projet"]!["profiles"]!.AsArray()[0]!["id"]!.GetValue<Guid>();
-        await Saisir(consultant, HttpMethod.Put, $"/api/projets/{id}/taches/r7/consomme", new { profilId = profil, jour = "2026-09-10", jh = 0.5m });
-        await Refuser(consultant, HttpMethod.Put, $"/api/projets/{id}/taches/r7/statut", new { statut = "Validé" }, HttpStatusCode.Forbidden);
-        await Refuser(consultant, HttpMethod.Post, $"/api/projets/{id}/exports/copil", null, HttpStatusCode.Forbidden);
+        await Saisir(consultant, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/consomme", new { profilId = profil, jour = "2026-09-10", jh = 0.5m });
+        await Refuser(consultant, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/statut", new { statut = "Validé" }, HttpStatusCode.Forbidden);
+        await Refuser(consultant, HttpMethod.Post, $"/api/v1/projets/{id}/exports/copil", null, HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -545,14 +545,14 @@ public sealed class SuiviApiTests : IClassFixture<FabriqueApi>
     {
         var id = await ImporterAsync(_api.ClientPour("chef"));
         var pilotage = _api.ClientPour("pilotage");
-        var suivi = await pilotage.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        var suivi = await pilotage.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         Assert.True(suivi!["droits"]!["voitMontants"]!.GetValue<bool>());
         Assert.False(suivi["droits"]!["peutModifier"]!.GetValue<bool>());
         Assert.NotNull(suivi["modele"]!["financier"]);
-        await Refuser(pilotage, HttpMethod.Put, $"/api/projets/{id}/taches/r7/commentaire", new { commentaire = "x" }, HttpStatusCode.Forbidden);
+        await Refuser(pilotage, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/commentaire", new { commentaire = "x" }, HttpStatusCode.Forbidden);
         // l'export reste possible, sans photo des indicateurs (lecture seule)
-        Assert.Equal(HttpStatusCode.OK, (await pilotage.PostAsync($"/api/projets/{id}/exports/copil", null)).StatusCode);
-        var apres = await pilotage.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        Assert.Equal(HttpStatusCode.OK, (await pilotage.PostAsync($"/api/v1/projets/{id}/exports/copil", null)).StatusCode);
+        var apres = await pilotage.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         Assert.Empty(apres!["projet"]!["historique"]!.AsArray());
     }
 }

@@ -9,33 +9,33 @@ public sealed class ProjetsClient(HttpClient httpClient) : ApiClientBase(httpCli
     public Task<IReadOnlyList<ProjetResumeDto>> ListerAsync(
         bool archives = false,
         CancellationToken cancellationToken = default) =>
-        GetAsync<IReadOnlyList<ProjetResumeDto>>($"api/projets?archives={archives.ToString().ToLowerInvariant()}", cancellationToken);
+        GetAsync<IReadOnlyList<ProjetResumeDto>>($"api/v1/projets?archives={archives.ToString().ToLowerInvariant()}", cancellationToken);
 
     public Task<ProjetDetailDto> ObtenirAsync(Guid id, CancellationToken cancellationToken = default) =>
-        GetAsync<ProjetDetailDto>($"api/projets/{id:D}", cancellationToken);
+        GetAsync<ProjetDetailDto>($"api/v1/projets/{id:D}", cancellationToken);
 
     public Task<ProjetCreeReponse> CreerVideAsync(
         CreerProjetVideRequete requete,
         CancellationToken cancellationToken = default) =>
-        SendForResponseAsync<ProjetCreeReponse>(HttpMethod.Post, "api/projets", requete, cancellationToken);
+        SendForResponseAsync<ProjetCreeReponse>(HttpMethod.Post, "api/v1/projets", requete, cancellationToken);
 
     public Task ArchiverAsync(Guid id, ArchivageCommande commande, CancellationToken cancellationToken = default) =>
-        SendWithoutResponseAsync(HttpMethod.Put, $"api/projets/{id:D}/archivage", commande, cancellationToken);
+        SendWithoutResponseAsync(HttpMethod.Put, $"api/v1/projets/{id:D}/archivage", commande, cancellationToken);
 
     public Task SupprimerAsync(Guid id, SuppressionCommande commande, CancellationToken cancellationToken = default) =>
-        SendWithoutResponseAsync(HttpMethod.Post, $"api/projets/{id:D}/suppression", commande, cancellationToken);
+        SendWithoutResponseAsync(HttpMethod.Post, $"api/v1/projets/{id:D}/suppression", commande, cancellationToken);
 
     public Task<ProjetCreeReponse> ImporterTspAsync(
         Stream fichier,
         string nomFichier,
         CancellationToken cancellationToken = default) =>
-        EnvoyerFichierAsync<ProjetCreeReponse>("api/projets/import-tsp", fichier, nomFichier, cancellationToken);
+        EnvoyerFichierAsync<ProjetCreeReponse>("api/v1/projets/import-tsp", fichier, nomFichier, cancellationToken);
 
     public Task<ApercuImportDto> AnalyserTspAsync(
         Stream fichier,
         string nomFichier,
         CancellationToken cancellationToken = default) =>
-        EnvoyerFichierAsync<ApercuImportDto>("api/projets/import-tsp/apercu", fichier, nomFichier, cancellationToken);
+        EnvoyerFichierAsync<ApercuImportDto>("api/v1/projets/import-tsp/apercu", fichier, nomFichier, cancellationToken);
 
     private Task<TResponse> EnvoyerFichierAsync<TResponse>(
         string route,

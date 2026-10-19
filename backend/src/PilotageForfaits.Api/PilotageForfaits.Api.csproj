@@ -13,10 +13,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Identity.Web" />
+    <PackageReference Include="Franz.Common.Business" />
     <PackageReference Include="Franz.Common.Mediator" />
     <PackageReference Include="Franz.Common.Logging" />
     <PackageReference Include="Franz.Common.Mediator.Polly" />
     <PackageReference Include="Franz.Common.Http.Bootstrap" />
+    <PackageReference Include="Franz.Common.Http.EntityFramework" />
+    <PackageReference Include="Franz.Common.EntityFramework" />
+    <PackageReference Include="Franz.Common.EntityFramework.PostGres" />
     <!-- Nécessaire pour la commande « dotnet ef migrations add » lancée depuis ce projet. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>

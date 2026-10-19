@@ -35,14 +35,14 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     [Fact]
     public async Task La_sante_de_l_API_est_accessible_sans_connexion()
     {
-        var reponse = await _api.CreateClient().GetAsync("/api/sante");
+        var reponse = await _api.CreateClient().GetAsync("/api/v1/sante");
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
     }
 
     [Fact]
     public async Task L_utilisateur_connecte_est_cree_a_sa_premiere_connexion()
     {
-        var moi = await _api.ClientPour("chef").GetFromJsonAsync<JsonObject>("/api/moi");
+        var moi = await _api.ClientPour("chef").GetFromJsonAsync<JsonObject>("/api/v1/moi");
         Assert.Equal("Camille", moi!["prenom"]!.GetValue<string>());
         Assert.True(moi["peutCreerUnProjet"]!.GetValue<bool>());
     }
@@ -51,31 +51,31 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     public async Task Un_projet_vide_cree_apparait_en_preparation_dans_la_liste_de_son_chef_de_projet()
     {
         var client = _api.ClientPour("chef");
-        var reponse = await client.PostAsJsonAsync("/api/projets", ProjetVide("Projet vide de test"));
+        var reponse = await client.PostAsJsonAsync("/api/v1/projets", ProjetVide("Projet vide de test"));
         Assert.Equal(HttpStatusCode.Created, reponse.StatusCode);
         var id = (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
 
-        var liste = await client.GetFromJsonAsync<JsonArray>("/api/projets");
+        var liste = await client.GetFromJsonAsync<JsonArray>("/api/v1/projets");
         var projet = liste!.Single(p => p!["id"]!.GetValue<Guid>() == id)!;
         Assert.Equal("En préparation", projet["statut"]!.GetValue<string>());
         Assert.Equal("Chef de projet", projet["monRole"]!.GetValue<string>());
         Assert.True(projet["estVide"]!.GetValue<bool>());
 
-        var detail = await client.GetFromJsonAsync<JsonObject>($"/api/projets/{id}");
+        var detail = await client.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}");
         Assert.Equal("Création manuelle", detail!["origine"]!.GetValue<string>());
     }
 
     [Fact]
     public async Task Un_projet_vide_sans_client_est_refuse()
     {
-        var reponse = await _api.ClientPour("chef").PostAsJsonAsync("/api/projets", new { nom = "Sans client", debut = "2026-11-02", finContractuelle = "2027-02-26" });
+        var reponse = await _api.ClientPour("chef").PostAsJsonAsync("/api/v1/projets", new { nom = "Sans client", debut = "2026-11-02", finContractuelle = "2027-02-26" });
         Assert.Equal(HttpStatusCode.BadRequest, reponse.StatusCode);
     }
 
     [Fact]
     public async Task Une_fin_avant_le_debut_est_refusee_avec_un_message_clair()
     {
-        var reponse = await _api.ClientPour("chef").PostAsJsonAsync("/api/projets", new { client = "C", nom = "P", debut = "2027-01-01", finContractuelle = "2026-01-01" });
+        var reponse = await _api.ClientPour("chef").PostAsJsonAsync("/api/v1/projets", new { client = "C", nom = "P", debut = "2027-01-01", finContractuelle = "2026-01-01" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
         var probleme = await reponse.Content.ReadFromJsonAsync<JsonObject>();
         Assert.Contains("fin contractuelle", probleme!["detail"]!.GetValue<string>());
@@ -84,23 +84,23 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     [Fact]
     public async Task Un_consultant_ne_peut_pas_creer_de_projet()
     {
-        var reponse = await _api.ClientPour("consultant").PostAsJsonAsync("/api/projets", ProjetVide("Interdit"));
+        var reponse = await _api.ClientPour("consultant").PostAsJsonAsync("/api/v1/projets", ProjetVide("Interdit"));
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
     }
 
     [Fact]
     public async Task Un_chef_de_projet_ne_voit_pas_les_projets_des_autres()
     {
-        var reponse = await _api.ClientPour("chef").PostAsJsonAsync("/api/projets", ProjetVide("Projet privé"));
+        var reponse = await _api.ClientPour("chef").PostAsJsonAsync("/api/v1/projets", ProjetVide("Projet privé"));
         var id = (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
 
         var autre = _api.ClientPour("chef2");
-        var liste = await autre.GetFromJsonAsync<JsonArray>("/api/projets");
+        var liste = await autre.GetFromJsonAsync<JsonArray>("/api/v1/projets");
         Assert.DoesNotContain(liste!, p => p!["id"]!.GetValue<Guid>() == id);
-        Assert.Equal(HttpStatusCode.NotFound, (await autre.GetAsync($"/api/projets/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await autre.GetAsync($"/api/v1/projets/{id}")).StatusCode);
 
         // le pilotage voit tous les projets, en lecture
-        var pilotage = await _api.ClientPour("pilotage").GetFromJsonAsync<JsonObject>($"/api/projets/{id}");
+        var pilotage = await _api.ClientPour("pilotage").GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}");
         Assert.Equal("Pilotage", pilotage!["monRole"]!.GetValue<string>());
         Assert.False(pilotage["peutModifier"]!.GetValue<bool>());
     }
@@ -109,20 +109,20 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     public async Task L_apercu_d_un_TSP_decrit_ce_qui_sera_repris_sans_rien_enregistrer()
     {
         var client = _api.ClientPour("chef2");
-        var avant = (await client.GetFromJsonAsync<JsonArray>("/api/projets"))!.Count;
-        var reponse = await client.PostAsync("/api/projets/import-tsp/apercu", FichierTsp());
+        var avant = (await client.GetFromJsonAsync<JsonArray>("/api/v1/projets"))!.Count;
+        var reponse = await client.PostAsync("/api/v1/projets/import-tsp/apercu", FichierTsp());
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         var apercu = await reponse.Content.ReadFromJsonAsync<JsonObject>();
         Assert.Equal("CLIENT EXEMPLE", apercu!["client"]!.GetValue<string>());
         Assert.Equal(93, apercu["nombreTaches"]!.GetValue<int>());
-        Assert.Equal(avant, (await client.GetFromJsonAsync<JsonArray>("/api/projets"))!.Count);
+        Assert.Equal(avant, (await client.GetFromJsonAsync<JsonArray>("/api/v1/projets"))!.Count);
     }
 
     [Fact]
     public async Task Un_fichier_qui_n_est_pas_un_TSP_est_refuse()
     {
         var contenu = new MultipartFormDataContent { { new ByteArrayContent("pas un tsp"u8.ToArray()), "fichier", "faux.xlsx" } };
-        var reponse = await _api.ClientPour("chef").PostAsync("/api/projets/import-tsp", contenu);
+        var reponse = await _api.ClientPour("chef").PostAsync("/api/v1/projets/import-tsp", contenu);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
     }
 
@@ -134,7 +134,7 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     public async Task Un_TSP_importe_donne_les_memes_indicateurs_que_la_version_de_reference()
     {
         var client = _api.ClientPour("chef");
-        var reponse = await client.PostAsync("/api/projets/import-tsp", FichierTsp());
+        var reponse = await client.PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         Assert.Equal(HttpStatusCode.Created, reponse.StatusCode);
         var id = (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
 
@@ -145,7 +145,7 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
             OutilsTests.VerifierIdentique(OutilsTests.Lire("scenario-a-tsp-importe.attendu.json"), OutilsTests.VersJson(calcul), "TSP importé puis relu en base");
         }
 
-        var detail = await client.GetFromJsonAsync<JsonObject>($"/api/projets/{id}");
+        var detail = await client.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}");
         var attendu = OutilsTests.Lire("scenario-a-tsp-importe.attendu.json");
         Assert.Equal(attendu["total"]!["prevu"]!.GetValue<decimal>(), detail!["indicateurs"]!["prevu"]!.GetValue<decimal>());
         Assert.Equal("Import d'un TSP", detail["origine"]!.GetValue<string>());
@@ -155,24 +155,24 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     [Fact]
     public async Task Les_montants_ne_sont_pas_envoyes_a_un_role_qui_ne_doit_pas_les_voir()
     {
-        var reponse = await _api.ClientPour("chef").PostAsync("/api/projets/import-tsp", FichierTsp());
+        var reponse = await _api.ClientPour("chef").PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         var id = (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
 
-        var chef = await _api.ClientPour("chef").GetFromJsonAsync<JsonObject>($"/api/projets/{id}");
+        var chef = await _api.ClientPour("chef").GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}");
         Assert.NotNull(chef!["indicateurs"]!["chiffreAffaires"]);
 
-        var pilotage = await _api.ClientPour("pilotage").GetFromJsonAsync<JsonObject>($"/api/projets/{id}");
+        var pilotage = await _api.ClientPour("pilotage").GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}");
         Assert.NotNull(pilotage!["indicateurs"]!["chiffreAffaires"]);
 
         // le consultant n'est pas habilité sur ce projet : il ne le voit pas du tout
-        Assert.Equal(HttpStatusCode.NotFound, (await _api.ClientPour("consultant").GetAsync($"/api/projets/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _api.ClientPour("consultant").GetAsync($"/api/v1/projets/{id}")).StatusCode);
     }
 
     // ------------------------------------------------------------------ archivage et suppression
 
     private static async Task<Guid> ImporterAsync(HttpClient client)
     {
-        var reponse = await client.PostAsync("/api/projets/import-tsp", FichierTsp());
+        var reponse = await client.PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         Assert.Equal(HttpStatusCode.Created, reponse.StatusCode);
         return (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
     }
@@ -188,20 +188,20 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     {
         var chef = _api.ClientPour("chef");
         var id = await ImporterAsync(chef);
-        Assert.Equal(HttpStatusCode.NoContent, (await EnvoyerAsync(chef, HttpMethod.Put, $"/api/projets/{id}/archivage", new { archive = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await EnvoyerAsync(chef, HttpMethod.Put, $"/api/v1/projets/{id}/archivage", new { archive = true })).StatusCode);
 
-        Assert.DoesNotContain((await chef.GetFromJsonAsync<JsonArray>("/api/projets"))!, p => p!["id"]!.GetValue<Guid>() == id);
-        Assert.Contains((await chef.GetFromJsonAsync<JsonArray>("/api/projets?archives=true"))!, p => p!["id"]!.GetValue<Guid>() == id);
-        var suivi = await chef.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        Assert.DoesNotContain((await chef.GetFromJsonAsync<JsonArray>("/api/v1/projets"))!, p => p!["id"]!.GetValue<Guid>() == id);
+        Assert.Contains((await chef.GetFromJsonAsync<JsonArray>("/api/v1/projets?archives=true"))!, p => p!["id"]!.GetValue<Guid>() == id);
+        var suivi = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         Assert.True(suivi!["droits"]!["archive"]!.GetValue<bool>());
         Assert.False(suivi["droits"]!["peutModifier"]!.GetValue<bool>());
-        var saisie = await EnvoyerAsync(chef, HttpMethod.Put, $"/api/projets/{id}/taches/r7/commentaire", new { commentaire = "x" });
+        var saisie = await EnvoyerAsync(chef, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/commentaire", new { commentaire = "x" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, saisie.StatusCode);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await EnvoyerAsync(chef, HttpMethod.Put, $"/api/projets/{id}/archivage", new { archive = false })).StatusCode);
-        var projet = (await chef.GetFromJsonAsync<JsonArray>("/api/projets"))!.Single(p => p!["id"]!.GetValue<Guid>() == id)!;
+        Assert.Equal(HttpStatusCode.NoContent, (await EnvoyerAsync(chef, HttpMethod.Put, $"/api/v1/projets/{id}/archivage", new { archive = false })).StatusCode);
+        var projet = (await chef.GetFromJsonAsync<JsonArray>("/api/v1/projets"))!.Single(p => p!["id"]!.GetValue<Guid>() == id)!;
         Assert.NotEqual("Archive", projet["statutCode"]!.GetValue<string>());
-        Assert.Equal(HttpStatusCode.Forbidden, (await EnvoyerAsync(_api.ClientPour("pilotage"), HttpMethod.Put, $"/api/projets/{id}/archivage", new { archive = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await EnvoyerAsync(_api.ClientPour("pilotage"), HttpMethod.Put, $"/api/v1/projets/{id}/archivage", new { archive = true })).StatusCode);
     }
 
     [Fact]
@@ -209,15 +209,15 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     {
         var chef = _api.ClientPour("chef");
         var id = await ImporterAsync(chef); // l'import remplit la plupart des tables du projet
-        var nom = (await chef.GetFromJsonAsync<JsonObject>($"/api/projets/{id}"))!["nom"]!.GetValue<string>();
+        var nom = (await chef.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}"))!["nom"]!.GetValue<string>();
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await EnvoyerAsync(chef, HttpMethod.Post, $"/api/projets/{id}/suppression", new { confirmation = "autre nom" })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await EnvoyerAsync(_api.ClientPour("pilotage"), HttpMethod.Post, $"/api/projets/{id}/suppression", new { confirmation = nom })).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await EnvoyerAsync(chef, HttpMethod.Post, $"/api/v1/projets/{id}/suppression", new { confirmation = "autre nom" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await EnvoyerAsync(_api.ClientPour("pilotage"), HttpMethod.Post, $"/api/v1/projets/{id}/suppression", new { confirmation = nom })).StatusCode);
 
-        var reponse = await EnvoyerAsync(chef, HttpMethod.Post, $"/api/projets/{id}/suppression", new { confirmation = "  " + nom.ToUpperInvariant() + " " });
+        var reponse = await EnvoyerAsync(chef, HttpMethod.Post, $"/api/v1/projets/{id}/suppression", new { confirmation = "  " + nom.ToUpperInvariant() + " " });
         Assert.Equal(HttpStatusCode.NoContent, reponse.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await chef.GetAsync($"/api/projets/{id}/suivi")).StatusCode);
-        Assert.DoesNotContain((await chef.GetFromJsonAsync<JsonArray>("/api/projets"))!, p => p!["id"]!.GetValue<Guid>() == id);
+        Assert.Equal(HttpStatusCode.NotFound, (await chef.GetAsync($"/api/v1/projets/{id}/suivi")).StatusCode);
+        Assert.DoesNotContain((await chef.GetFromJsonAsync<JsonArray>("/api/v1/projets"))!, p => p!["id"]!.GetValue<Guid>() == id);
     }
 
     [Fact]
@@ -225,13 +225,13 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     {
         var chef = _api.ClientPour("chef");
         var id = await ImporterAsync(chef);
-        var suivi = await chef.GetFromJsonAsync<JsonObject>($"/api/projets/{id}/suivi");
+        var suivi = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}/suivi");
         var profil = suivi!["projet"]!["profiles"]!.AsArray()[0]!["id"]!.GetValue<Guid>();
-        var conso = await EnvoyerAsync(chef, HttpMethod.Put, $"/api/projets/{id}/taches/r7/consomme", new { profilId = profil, jour = "2026-09-10", jh = 0.5m });
+        var conso = await EnvoyerAsync(chef, HttpMethod.Put, $"/api/v1/projets/{id}/taches/r7/consomme", new { profilId = profil, jour = "2026-09-10", jh = 0.5m });
         Assert.True(conso.IsSuccessStatusCode, await conso.Content.ReadAsStringAsync());
-        var nom = (await chef.GetFromJsonAsync<JsonObject>($"/api/projets/{id}"))!["nom"]!.GetValue<string>();
+        var nom = (await chef.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}"))!["nom"]!.GetValue<string>();
 
-        var reponse = await EnvoyerAsync(chef, HttpMethod.Post, $"/api/projets/{id}/suppression", new { confirmation = nom });
+        var reponse = await EnvoyerAsync(chef, HttpMethod.Post, $"/api/v1/projets/{id}/suppression", new { confirmation = nom });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
         Assert.Contains("Archivez-le", (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["detail"]!.GetValue<string>());
     }
@@ -245,29 +245,29 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
         var id = await ImporterAsync(chef);
 
         // l'aperçu le signale avant l'import…
-        var apercu = await (await chef.PostAsync("/api/projets/import-tsp/apercu", FichierTsp())).Content.ReadFromJsonAsync<JsonObject>();
+        var apercu = await (await chef.PostAsync("/api/v1/projets/import-tsp/apercu", FichierTsp())).Content.ReadFromJsonAsync<JsonObject>();
         Assert.Equal(id, apercu!["projetExistant"]!["id"]!.GetValue<Guid>());
         // … et l'import est refusé, avec le moyen de retrouver le projet
-        var reponse = await chef.PostAsync("/api/projets/import-tsp", FichierTsp());
+        var reponse = await chef.PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
         Assert.Contains("déjà suivi", (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["detail"]!.GetValue<string>());
 
         // un collègue sans accès apprend seulement qu'il existe, sans son nom
-        var autre = await _api.ClientPour("chef2").PostAsync("/api/projets/import-tsp", FichierTsp());
+        var autre = await _api.ClientPour("chef2").PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         Assert.Equal(HttpStatusCode.UnprocessableEntity, autre.StatusCode);
         var detail = (await autre.Content.ReadFromJsonAsync<JsonObject>())!["detail"]!.GetValue<string>();
         Assert.Contains("pas accès", detail);
         Assert.DoesNotContain("CLIENT EXEMPLE", detail);
 
         // archivé, il se restaure : il ne se réimporte pas
-        await EnvoyerAsync(chef, HttpMethod.Put, $"/api/projets/{id}/archivage", new { archive = true });
-        reponse = await chef.PostAsync("/api/projets/import-tsp", FichierTsp());
+        await EnvoyerAsync(chef, HttpMethod.Put, $"/api/v1/projets/{id}/archivage", new { archive = true });
+        reponse = await chef.PostAsync("/api/v1/projets/import-tsp", FichierTsp());
         Assert.Contains("Restaurez-le", (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["detail"]!.GetValue<string>());
 
         // seul un projet supprimé (créé par erreur) libère son identité
-        await EnvoyerAsync(chef, HttpMethod.Put, $"/api/projets/{id}/archivage", new { archive = false });
-        var nom = (await chef.GetFromJsonAsync<JsonObject>($"/api/projets/{id}"))!["nom"]!.GetValue<string>();
-        Assert.Equal(HttpStatusCode.NoContent, (await EnvoyerAsync(chef, HttpMethod.Post, $"/api/projets/{id}/suppression", new { confirmation = nom })).StatusCode);
+        await EnvoyerAsync(chef, HttpMethod.Put, $"/api/v1/projets/{id}/archivage", new { archive = false });
+        var nom = (await chef.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{id}"))!["nom"]!.GetValue<string>();
+        Assert.Equal(HttpStatusCode.NoContent, (await EnvoyerAsync(chef, HttpMethod.Post, $"/api/v1/projets/{id}/suppression", new { confirmation = nom })).StatusCode);
         await ImporterAsync(chef);
     }
 
@@ -275,12 +275,12 @@ public sealed class ProjetsApiTests : IClassFixture<FabriqueApi>
     public async Task Un_projet_vide_ne_peut_pas_reprendre_l_identite_d_un_projet_existant()
     {
         var chef = _api.ClientPour("chef");
-        Assert.Equal(HttpStatusCode.Created, (await chef.PostAsJsonAsync("/api/projets", ProjetVide("Premier"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await chef.PostAsJsonAsync("/api/v1/projets", ProjetVide("Premier"))).StatusCode);
         // même numéro d'opportunité (OP00000), autre nom : c'est le même forfait
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await chef.PostAsJsonAsync("/api/projets", ProjetVide("Second"))).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await chef.PostAsJsonAsync("/api/v1/projets", ProjetVide("Second"))).StatusCode);
         // sans référence : le client et le nom font l'identité (accents et majuscules ignorés)
         object SansReference(string nom) => new { client = "Client exemple", nom, debut = "2026-11-02", finContractuelle = "2027-02-26" };
-        Assert.Equal(HttpStatusCode.Created, (await chef.PostAsJsonAsync("/api/projets", SansReference("Refonte intranet"))).StatusCode);
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await chef.PostAsJsonAsync("/api/projets", SansReference("REFONTE  INTRANÉT"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await chef.PostAsJsonAsync("/api/v1/projets", SansReference("Refonte intranet"))).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await chef.PostAsJsonAsync("/api/v1/projets", SansReference("REFONTE  INTRANÉT"))).StatusCode);
     }
 }

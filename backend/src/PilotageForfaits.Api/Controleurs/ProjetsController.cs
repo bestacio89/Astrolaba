@@ -10,7 +10,7 @@ namespace PilotageForfaits.Api.Controleurs;
 /// <summary>Projets : liste selon les habilitations, création d'un projet vide, import d'un TSP, vue d'ensemble.</summary>
 [ApiController]
 [Authorize]
-[Route("api/projets")]
+[Route("projets")]
 public sealed class ProjetsController(IDispatcher dispatcher) : ControllerBase
 {
     /// <summary>Taille maximale d'un TSP (20 Mo).</summary>

@@ -4,7 +4,7 @@
  */
 export const environment = {
   production: false,
-  api: '/api',
+  api: '/api/v1',
   auth: {
     mode: 'dev' as 'entra' | 'dev',
     clientId: '',

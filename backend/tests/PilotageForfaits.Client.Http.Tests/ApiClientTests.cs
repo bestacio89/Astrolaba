@@ -24,7 +24,7 @@ public sealed class ApiClientTests
         var result = await new ProjetsClient(http).ListerAsync(archives: true);
 
         Assert.Empty(result);
-        Assert.EndsWith("api/projets?archives=true", requestedUri, StringComparison.Ordinal);
+        Assert.EndsWith("api/v1/projets?archives=true", requestedUri, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class ApiClientTests
         await new ProjetsClient(http).ArchiverAsync(id, new ArchivageCommande(true));
 
         Assert.Equal(HttpMethod.Put, method);
-        Assert.EndsWith($"api/projets/{id:D}/archivage", requestedUri, StringComparison.Ordinal);
+        Assert.EndsWith($"api/v1/projets/{id:D}/archivage", requestedUri, StringComparison.Ordinal);
         using var json = JsonDocument.Parse(requestBody!);
         Assert.True(json.RootElement.GetProperty("archive").GetBoolean());
     }
