@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Extensions;
 using Franz.Common.EntityFramework.Auditing;
+using Franz.Common.Http.Bootstrap.Extensions;
 using Franz.Common.Logging.Extensions;
 using Franz.Common.Mediator.Polly;
 using PilotageForfaits.Application.Projets;
@@ -14,6 +15,7 @@ using PilotageForfaits.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseLog();
+builder.Services.AddFranzTelemetry(builder.Environment, builder.Configuration);
 
 // ---------- Couches de l'application ----------
 builder.Services.AjouterApplication();
