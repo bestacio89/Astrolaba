@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Franz.Common.Business.Extensions;
 using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.EntityFramework.Extensions;
+using Franz.Common.Http.Bootstrap.Extensions;
 using Franz.Common.Http.EntityFramework.Extensions;
 using Franz.Common.Logging.Extensions;
 using Franz.Common.Mediator.Bootstrap;
@@ -36,6 +37,7 @@ builder.Services.AddFranzMediatorV2Default(null, typeof(ArchiverProjetCommandHan
     .AddFranzSerilogAuditPipeline()
     .AddFranzSerilogLoggingPipeline();
 builder.Services.AddFranzResilience(config);
+builder.Services.AddHttpArchitecture(env, config);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();
@@ -68,7 +70,7 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 
-app.UseHttpsRedirection();
+app.UseHttpArchitecture();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
