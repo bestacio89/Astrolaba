@@ -16,7 +16,7 @@ public sealed class ObtenirMoiQueryHandler(ServiceAcces acces, IUtilisateurCoura
             utilisateur.Prenom,
             utilisateur.Nom,
             utilisateur.Email,
-            courant.Roles.ToList(),
+            acces.RolesCourants,
             acces.PeutCreerUnProjet,
             acces.VoitTousLesProjets);
     }
