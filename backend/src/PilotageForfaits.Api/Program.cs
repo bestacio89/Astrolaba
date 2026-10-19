@@ -16,7 +16,6 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseLog();
-builder.Services.AddFranzTelemetry(builder.Environment, builder.Configuration);
 
 // ---------- Couches de l'application ----------
 builder.Services.AjouterApplication();
