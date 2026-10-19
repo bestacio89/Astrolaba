@@ -33,9 +33,9 @@ Entra ID must be configured to emit group membership in the API access token for
 ## Authorization rules
 
 1. The token must be valid for the configured tenant and API audience.
-2. The user must have exactly one configured project-view role. If group membership maps to zero or multiple view roles, project access is denied until the mapping is unambiguous.
-3. The user must have an explicit Astrolaba assignment (Habilitations) for the requested project.
-4. The effective view role comes from the configured Entra group. The legacy role value stored on the assignment is not used to override group membership.
+2. The user must have an explicit Astrolaba assignment (Habilitations) for the requested project.
+3. The role stored on that project assignment must also be backed by a configured Entra group claim. The database assignment scopes access to the project; the group claim authorizes the corresponding view type. Neither condition is sufficient by itself.
+4. Membership in multiple configured groups is supported when the project assignment selects the matching role. A role mismatch, missing group, or missing assignment denies access.
 5. Project-level business rules (read-only archived projects, mutation restrictions, financial visibility) remain enforced by the application access service.
 6. Global group membership does not bypass project assignment. The existing VoitTousLesProjets response field is retained for contract compatibility and returns false.
 
