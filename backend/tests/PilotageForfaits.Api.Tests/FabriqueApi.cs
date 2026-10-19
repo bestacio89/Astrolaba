@@ -63,7 +63,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
             configuration[prefixe + "Nom"] = utilisateur.Nom;
             configuration[prefixe + "Email"] = utilisateur.Email;
             for (var j = 0; j < utilisateur.Groupes.Count; j++)
-                configuration[$"{prefixe}Roles:{j}"] = utilisateur.Groupes[j];
+                configuration[$"{prefixe}Groupes:{j}"] = utilisateur.Groupes[j];
         }
 
         return configuration;
@@ -72,7 +72,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
     private static List<UtilisateurDev> CreerUtilisateursTests() =>
     [
         new() { Cle = "chef", Oid = "oid-chef", Prenom = "Camille", Nom = "Martin", Email = "chef@exemple.fr", Groupes = ["dev-group-chef-de-projet"] },
-        new() { Cle = "chef2", Oid = "oid-chef-2", Prenom = "Alex", Nom = "Durand", Email = "chef2@exemple.fr", Roles = ["ChefDeProjet"] },
+        new() { Cle = "chef2", Oid = "oid-chef-2", Prenom = "Alex", Nom = "Durand", Email = "chef2@exemple.fr", Groupes = ["dev-group-chef-de-projet"] },
         new() { Cle = "consultant", Oid = "oid-consultant", Prenom = "Sam", Nom = "Petit", Email = "consultant@exemple.fr", Groupes = ["dev-group-consultant"] },
         new() { Cle = "pilotage", Oid = "oid-pilotage", Prenom = "Lou", Nom = "Bernard", Email = "pilotage@exemple.fr", Groupes = ["dev-group-pilotage"] }
     ];
