@@ -84,8 +84,8 @@ public sealed class ServiceAcces(
         var u = await UtilisateurAsync(annulation);
         // The database record is an explicit project assignment. The effective view/role comes
         // from Entra group membership, not from application-role claims or the legacy role column.
-        var affectation = await persistence.TrouverRoleAsync(projetId, u.Id, annulation);
-        if (affectation is null || RolesProjetCourants.Count != 1)
+        var affecte = await persistence.EstAffecteAuProjetAsync(projetId, u.Id, annulation);
+        if (!affecte || RolesProjetCourants.Count != 1)
             return null;
 
         return RolesProjetCourants[0];
