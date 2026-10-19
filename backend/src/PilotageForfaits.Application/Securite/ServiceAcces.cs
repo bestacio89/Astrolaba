@@ -2,7 +2,6 @@ using Franz.Common.Mediator.Pipelines.Core;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
-using Microsoft.Extensions.Options;
 using PilotageForfaits.Domain.Entites;
 
 namespace PilotageForfaits.Application.Securite;
@@ -20,9 +19,9 @@ public sealed class ServiceAcces(
     IUnitOfWork uniteTravail,
     IUtilisateurCourant courant,
     IHorloge horloge,
-    IOptions<GroupesEntraConfiguration> optionsGroupes)
+    GroupesEntraConfiguration groupesEntra)
 {
-    private readonly GroupesEntraConfiguration _groupes = optionsGroupes.Value;
+    private readonly GroupesEntraConfiguration _groupes = groupesEntra;
     private Utilisateur? _utilisateur;
 
     /// <summary>Rôles applicatifs déduits exclusivement des groupes Entra ID configurés.</summary>
