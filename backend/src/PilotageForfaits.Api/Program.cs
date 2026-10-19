@@ -2,7 +2,6 @@ using System.Text.Json.Serialization;
 using Franz.Common.Business.Extensions;
 using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.EntityFramework.Extensions;
-using Franz.Common.Http.Bootstrap.Extensions;
 using Franz.Common.Http.EntityFramework.Extensions;
 using Franz.Common.Logging.Extensions;
 using Franz.Common.Mediator.Bootstrap;
@@ -38,7 +37,6 @@ builder.Services.AddFranzMediatorV2Default(null, typeof(ArchiverProjetCommandHan
     .AddFranzSerilogLoggingPipeline();
 builder.Services.AddFranzResilience(config);
 
-builder.Services.AddHttpArchitecture(env, config);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();
 
