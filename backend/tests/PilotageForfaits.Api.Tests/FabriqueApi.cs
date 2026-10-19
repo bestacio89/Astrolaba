@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using PilotageForfaits.Application.Abstractions;
@@ -12,22 +13,40 @@ using PilotageForfaits.Infrastructure.Donnees;
 namespace PilotageForfaits.Api.Tests;
 
 /// <summary>
-/// Démarre l'API complète en mémoire, avec une base SQLite en mémoire (au lieu de PostgreSQL),
-/// des utilisateurs fictifs et une date du jour fixe (06/10/2026, celle des scénarios de référence).
+/// Héberge l'API complète avec les services Franz réels, une base SQLite isolée pour les tests HTTP,
+/// des identités de développement déterministes et une horloge fixe.
+/// La configuration est injectée dans l'hôte de test : aucun état d'environnement global partagé entre tests.
 /// </summary>
 public sealed class FabriqueApi : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connexion = new("DataSource=:memory:");
 
+    private static readonly Dictionary<string, string?> ConfigurationTests = CreerConfigurationTests();
+
     public FabriqueApi()
     {
         // La base SQLite en mémoire vit tant que la connexion reste ouverte.
         _connexion.Open();
-        // Réglages lus par Program.cs dès son démarrage : on les passe par variables d'environnement,
-        // lues de façon sûre au tout début (avant les réglages propres à la fabrique de tests).
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Tests");
-        Environment.SetEnvironmentVariable("Authentification__Mode", "Dev");
-        Environment.SetEnvironmentVariable("ConnectionStrings__Pilotage", "Host=localhost;Database=unused;Username=postgres;Password=unused");
+    }
+
+    private static Dictionary<string, string?> CreerConfigurationTests()
+    {
+        var configuration = new Dictionary<string, string?>
+        {
+            ["Authentification:Mode"] = "Dev",
+            // Franz configure la base relationnelle au démarrage. Le DbContext est ensuite remplacé
+            // dans ConfigureTestServices par SQLite, sans dépendance à PostgreSQL pour les tests HTTP.
+            ["ASTROLABA_POSTGRES"] = "Host=localhost;Database=unused;Username=postgres;Password=unused",
+            ["ConnectionStrings:Pilotage"] = "Host=localhost;Database=unused;Username=postgres;Password=unused",
+            ["Database:Provider"] = "Postgres",
+            ["Database:ServerName"] = "localhost",
+            ["Database:DatabaseName"] = "unused",
+            ["Database:UserName"] = "postgres",
+            ["Database:Password"] = "unused",
+            ["Database:Port"] = "5432",
+            ["Database:Ssl"] = "Disable"
+        };
+
         var utilisateurs = new[]
         {
             ("chef", "oid-chef", "Camille", "Martin", "ChefDeProjet"),
@@ -35,22 +54,25 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
             ("consultant", "oid-consultant", "Sam", "Petit", ""),
             ("pilotage", "oid-pilotage", "Lou", "Bernard", "Pilotage"),
         };
+
         for (var i = 0; i < utilisateurs.Length; i++)
         {
             var (cle, oid, prenom, nom, role) = utilisateurs[i];
-            var prefixe = $"Authentification__UtilisateursDev__{i}__";
-            Environment.SetEnvironmentVariable(prefixe + "Cle", cle);
-            Environment.SetEnvironmentVariable(prefixe + "Oid", oid);
-            Environment.SetEnvironmentVariable(prefixe + "Prenom", prenom);
-            Environment.SetEnvironmentVariable(prefixe + "Nom", nom);
-            Environment.SetEnvironmentVariable(prefixe + "Email", $"{cle}@exemple.fr");
-            if (role.Length > 0) Environment.SetEnvironmentVariable(prefixe + "Roles__0", role);
+            var prefixe = $"Authentification:UtilisateursDev:{i}:";
+            configuration[prefixe + "Cle"] = cle;
+            configuration[prefixe + "Oid"] = oid;
+            configuration[prefixe + "Prenom"] = prenom;
+            configuration[prefixe + "Nom"] = nom;
+            configuration[prefixe + "Email"] = $"{cle}@exemple.fr";
+            if (role.Length > 0)
+                configuration[prefixe + "Roles:0"] = role;
         }
+
+        return configuration;
     }
 
     /// <summary>
-    /// Date du jour fixe (06/10/2026). L'heure (« Maintenant ») peut être réglée par un test pour dater des saisies
-    /// (ex. rejouer un scénario où les ajouts ont eu lieu à des dates différentes).
+    /// Date du jour fixe (06/10/2026). L'heure peut être réglée par un test pour dater des saisies.
     /// </summary>
     public sealed class HorlogeFixe : IHorloge
     {
@@ -62,12 +84,17 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Tests");
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(ConfigurationTests));
+
         builder.ConfigureTestServices(services =>
         {
-            // remplace PostgreSQL par SQLite en mémoire
+            // Franz reste dans le pipeline HTTP et le conteneur applicatif ; seul le provider de données
+            // est remplacé pour que les tests soient rapides, déterministes et indépendants de PostgreSQL.
             services.RemoveAll<DbContextOptions<PilotageDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<PilotageDbContext>>();
-            services.AddDbContext<PilotageDbContext>(o => o.UseSqlite(_connexion));
+            services.AddDbContext<PilotageDbContext>(options => options.UseSqlite(_connexion));
+
             services.RemoveAll<IHorloge>();
             services.AddSingleton<IHorloge, HorlogeFixe>();
         });
@@ -79,7 +106,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Add("X-Utilisateur-Dev", "chef");
     }
 
-    /// <summary>Client HTTP connecté sous l'identité d'un utilisateur fictif (chef, chef2, consultant, pilotage).</summary>
+    /// <summary>Client HTTP connecté sous une identité de test.</summary>
     public HttpClient ClientPour(string utilisateur)
     {
         var client = CreateClient();
@@ -88,7 +115,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>Recrée la base SQLite pour isoler chaque test de l'état laissé par les tests précédents.</summary>
+    /// <summary>Recrée la base SQLite pour isoler chaque test de l'état laissé par les précédents.</summary>
     public void PreparerBase()
     {
         using var scope = Services.CreateScope();
@@ -100,6 +127,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing) _connexion.Dispose();
+        if (disposing)
+            _connexion.Dispose();
     }
 }
