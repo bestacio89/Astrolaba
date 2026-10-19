@@ -94,8 +94,9 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         {
             // Configure explicit defaults and the real development scheme used by Program.cs.
             // This avoids relying on configuration binding order for the test identity catalogue.
-            services.AddAuthentication(options =>
+            services.PostConfigure<AuthenticationOptions>(options =>
             {
+                options.DefaultScheme = AuthentificationDev.Schema;
                 options.DefaultAuthenticateScheme = AuthentificationDev.Schema;
                 options.DefaultChallengeScheme = AuthentificationDev.Schema;
                 options.DefaultForbidScheme = AuthentificationDev.Schema;
