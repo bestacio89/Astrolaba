@@ -15,6 +15,7 @@ using PilotageForfaits.Api.Erreurs;
 using PilotageForfaits.Application;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Projets;
+using PilotageForfaits.Application.Securite;
 using PilotageForfaits.Domain.Entites;
 using PilotageForfaits.Infrastructure;
 using PilotageForfaits.Infrastructure.Donnees;
@@ -39,6 +40,8 @@ builder.Services.AddFranzMediatorV2Default(null, typeof(ArchiverProjetCommandHan
 builder.Services.AddFranzResilience(config);
 builder.Services.AddHttpArchitecture(env, config);
 
+builder.Services.Configure<GroupesEntraConfiguration>(config.GetSection("Authentification:GroupesEntra"));
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUtilisateurCourant, UtilisateurCourantHttp>();
 
@@ -55,6 +58,22 @@ if (mode == "Dev")
 }
 else
 {
+    // Entra ID is the only supported non-development authentication provider.
+    // Fail at startup rather than running with template values that can never validate a real token.
+    if (!env.IsEnvironment("Tests"))
+    {
+        var tenantId = config["AzureAd:TenantId"];
+        var clientId = config["AzureAd:ClientId"];
+        var audience = config["AzureAd:Audience"];
+        if (string.IsNullOrWhiteSpace(tenantId) || tenantId.Contains("RENSEIGNER", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(clientId) || clientId.Contains("RENSEIGNER", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(audience) || audience.Contains("RENSEIGNER", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "La configuration Entra ID est incomplète. Configurez AzureAd:TenantId, AzureAd:ClientId et AzureAd:Audience via la configuration de déploiement.");
+        }
+    }
+
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddMicrosoftIdentityWebApi(config.GetSection("AzureAd"));
 }
