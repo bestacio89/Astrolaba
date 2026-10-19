@@ -11,19 +11,8 @@ public interface IUtilisateurCourant
     string Prenom { get; }
     string Nom { get; }
     string Email { get; }
-    /// <summary>Rôles globaux attribués dans Entra ID (voir <see cref="RolesGlobaux"/>).</summary>
-    IReadOnlyCollection<string> Roles { get; }
-}
-
-/// <summary>Noms des rôles globaux déclarés dans l'inscription de l'application Entra ID.</summary>
-public static class RolesGlobaux
-{
-    /// <summary>Peut créer des projets (il en devient chef de projet).</summary>
-    public const string ChefDeProjet = "ChefDeProjet";
-    /// <summary>Voit tous les projets en lecture, montants compris.</summary>
-    public const string Pilotage = "Pilotage";
-    /// <summary>Administre l'application (utilisateurs, habilitations).</summary>
-    public const string Administrateur = "Administrateur";
+    /// <summary>Identifiants des groupes Entra ID présents dans le jeton d’accès.</summary>
+    IReadOnlyCollection<string> Groupes { get; }
 }
 
 /// <summary>Date et heure du jour. Remplaçable dans les tests pour obtenir des résultats reproductibles.</summary>
