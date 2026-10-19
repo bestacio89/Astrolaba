@@ -74,7 +74,7 @@ docker compose up -d
 La chaîne de connexion n'est pas stockée dans les fichiers de configuration suivis par Git. Pour le développement local, définissez-la avec User Secrets (depuis la racine du dépôt) :
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:Pilotage" "Host=localhost;Port=5432;Database=PilotageForfaits;Username=postgres;Password=Dev_Pilotage_2026!;Include Error Detail=true" --project backend/src/PilotageForfaits.Api
+dotnet user-secrets set "ConnectionStrings:Pilotage" 'Host=localhost;Port=5432;Database=PilotageForfaits;Username=postgres;Password=Dev_Pilotage_2026!;Include Error Detail=true' --project backend/src/PilotageForfaits.Api
 ```
 
 Cette valeur correspond uniquement au compte du conteneur PostgreSQL local défini dans `docker-compose.yml`. Ne réutilisez jamais ces identifiants en recette ou en production. En déploiement, fournissez `ConnectionStrings__Pilotage` via l'environnement ou un gestionnaire de secrets.
