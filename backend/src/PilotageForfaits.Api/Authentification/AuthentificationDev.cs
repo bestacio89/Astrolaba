@@ -13,7 +13,7 @@ public sealed class UtilisateurDev
     public string Prenom { get; set; } = "";
     public string Nom { get; set; } = "";
     public string Email { get; set; } = "";
-    public List<string> Roles { get; set; } = new();
+    public List<string> Groupes { get; set; } = new();
 }
 
 public sealed class OptionsAuthentificationDev : AuthenticationSchemeOptions
@@ -44,7 +44,7 @@ public sealed class AuthentificationDev(IOptionsMonitor<OptionsAuthentificationD
             new("preferred_username", u.Email),
             new("name", $"{u.Prenom} {u.Nom}".Trim()),
         };
-        claims.AddRange(u.Roles.Select(r => new Claim("roles", r)));
+        claims.AddRange(u.Groupes.Select(g => new Claim("groups", g)));
         var identite = new ClaimsIdentity(claims, Schema, "name", "roles");
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identite), Schema)));
     }
