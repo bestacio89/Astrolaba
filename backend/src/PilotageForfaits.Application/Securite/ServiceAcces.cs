@@ -2,8 +2,8 @@ using Franz.Common.Mediator.Pipelines.Core;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
-using PilotageForfaits.Domain.Entites;
 using Microsoft.Extensions.Options;
+using PilotageForfaits.Domain.Entites;
 
 namespace PilotageForfaits.Application.Securite;
 
@@ -12,7 +12,7 @@ namespace PilotageForfaits.Application.Securite;
 /// Droits par rôle (à valider) :
 /// - Consultant : voit ses projets et saisit son consommé, sans les montants ;
 /// - Chef de projet : voit et modifie tout son projet ;
-/// - Pilotage : voit tous les projets en lecture, montants compris ;
+/// - Pilotage : voit les projets auxquels il est explicitement affecté, en lecture, montants compris ;
 /// - Lecteur : voit le projet, sans les montants.
 /// </summary>
 public sealed class ServiceAcces(
