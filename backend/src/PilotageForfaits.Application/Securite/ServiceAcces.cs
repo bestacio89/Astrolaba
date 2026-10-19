@@ -3,6 +3,7 @@ using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Application.Commun;
 using PilotageForfaits.Domain.Commun;
 using PilotageForfaits.Domain.Entites;
+using Microsoft.Extensions.Options;
 
 namespace PilotageForfaits.Application.Securite;
 
@@ -14,9 +15,31 @@ namespace PilotageForfaits.Application.Securite;
 /// - Pilotage : voit tous les projets en lecture, montants compris ;
 /// - Lecteur : voit le projet, sans les montants.
 /// </summary>
-public sealed class ServiceAcces(IAccesRepository persistence, IUnitOfWork uniteTravail, IUtilisateurCourant courant, IHorloge horloge)
+public sealed class ServiceAcces(
+    IAccesRepository persistence,
+    IUnitOfWork uniteTravail,
+    IUtilisateurCourant courant,
+    IHorloge horloge,
+    IOptions<GroupesEntraConfiguration> optionsGroupes)
 {
+    private readonly GroupesEntraConfiguration _groupes = optionsGroupes.Value;
     private Utilisateur? _utilisateur;
+
+    /// <summary>Rôles applicatifs déduits exclusivement des groupes Entra ID configurés.</summary>
+    public IReadOnlyList<string> RolesCourants
+    {
+        get
+        {
+            var roles = _groupes.RolesPour(courant.Groupes).Select(role => role.ToString()).ToList();
+            if (_groupes.EstAdministrateur(courant.Groupes))
+                roles.Add("Administrateur");
+            return roles.Distinct(StringComparer.Ordinal).ToArray();
+        }
+    }
+
+    private IReadOnlyList<RoleProjet> RolesProjetCourants => _groupes.RolesPour(courant.Groupes);
+
+    private bool EstAdministrateur => _groupes.EstAdministrateur(courant.Groupes);
 
     /// <summary>
     /// Fiche de l'utilisateur connecté. Créée à sa première connexion, mise à jour ensuite (nom, e-mail).
@@ -36,7 +59,7 @@ public sealed class ServiceAcces(IAccesRepository persistence, IUnitOfWork unite
         u.Prenom = courant.Prenom;
         u.Nom = courant.Nom;
         u.Email = courant.Email;
-        u.Administrateur = courant.Roles.Contains(RolesGlobaux.Administrateur);
+        u.Administrateur = EstAdministrateur;
         // au plus une écriture par heure pour la date de dernière connexion (sinon chaque appel écrirait en base)
         if (u.DerniereConnexion is null || horloge.Maintenant - u.DerniereConnexion > TimeSpan.FromHours(1))
             u.DerniereConnexion = horloge.Maintenant;
@@ -44,21 +67,28 @@ public sealed class ServiceAcces(IAccesRepository persistence, IUnitOfWork unite
         return _utilisateur = u;
     }
 
-    /// <summary>Le rôle Pilotage (ou Administrateur) donne accès en lecture à tous les projets.</summary>
-    public bool VoitTousLesProjets =>
-        courant.Roles.Contains(RolesGlobaux.Pilotage) || courant.Roles.Contains(RolesGlobaux.Administrateur);
+    /// <summary>
+    /// L'appartenance à un groupe ne donne jamais accès à tous les projets :
+    /// chaque projet doit aussi avoir une habilitation explicite dans Astrolaba.
+    /// Le membre est conservé pour compatibilité du contrat API ; la valeur est toujours false.
+    /// </summary>
+    public bool VoitTousLesProjets => false;
 
-    /// <summary>Peut créer un projet (import d'un TSP ou projet vide).</summary>
+    /// <summary>Peut créer un projet selon ses groupes Entra ID.</summary>
     public bool PeutCreerUnProjet =>
-        courant.Roles.Contains(RolesGlobaux.ChefDeProjet) || courant.Roles.Contains(RolesGlobaux.Pilotage) || courant.Roles.Contains(RolesGlobaux.Administrateur);
+        RolesProjetCourants.Any(role => role is RoleProjet.ChefDeProjet or RoleProjet.Pilotage) || EstAdministrateur;
 
     /// <summary>Rôle de l'utilisateur connecté sur un projet, ou null s'il n'y a pas accès.</summary>
     public async Task<RoleProjet?> RoleSurProjetAsync(Guid projetId, CancellationToken annulation = default)
     {
         var u = await UtilisateurAsync(annulation);
-        var role = await persistence.TrouverRoleAsync(projetId, u.Id, annulation);
-        if (role is not null) return role;
-        return VoitTousLesProjets ? RoleProjet.Pilotage : null;
+        // The database record is an explicit project assignment. The effective view/role comes
+        // from Entra group membership, not from application-role claims or the legacy role column.
+        var affectation = await persistence.TrouverRoleAsync(projetId, u.Id, annulation);
+        if (affectation is null || RolesProjetCourants.Count != 1)
+            return null;
+
+        return RolesProjetCourants[0];
     }
 
     /// <summary>
