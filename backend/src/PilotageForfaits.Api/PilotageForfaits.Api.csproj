@@ -13,6 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Identity.Web" />
+    <PackageReference Include="Franz.Common.Business" />
     <PackageReference Include="Franz.Common.Mediator" />
     <PackageReference Include="Franz.Common.Logging" />
     <PackageReference Include="Franz.Common.Mediator.Polly" />
