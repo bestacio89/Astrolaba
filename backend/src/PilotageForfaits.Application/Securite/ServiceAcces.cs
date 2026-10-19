@@ -82,13 +82,13 @@ public sealed class ServiceAcces(
     public async Task<RoleProjet?> RoleSurProjetAsync(Guid projetId, CancellationToken annulation = default)
     {
         var u = await UtilisateurAsync(annulation);
-        // The database record is an explicit project assignment. The effective view/role comes
-        // from Entra group membership, not from application-role claims or the legacy role column.
-        var affecte = await persistence.EstAffecteAuProjetAsync(projetId, u.Id, annulation);
-        if (!affecte || RolesProjetCourants.Count != 1)
+        // The assignment scopes the role to this project; the same role must also be backed
+        // by an Entra group claim. Neither a group alone nor a database assignment alone is sufficient.
+        var roleAffectation = await persistence.TrouverRoleAsync(projetId, u.Id, annulation);
+        if (roleAffectation is null || !RolesProjetCourants.Contains(roleAffectation.Value))
             return null;
 
-        return RolesProjetCourants[0];
+        return roleAffectation.Value;
     }
 
     /// <summary>
