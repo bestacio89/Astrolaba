@@ -11,6 +11,7 @@ using Franz.Common.Mediator.Polly;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using PilotageForfaits.Api.Authentification;
+using PilotageForfaits.Api.Controleurs;
 using PilotageForfaits.Api.Erreurs;
 using PilotageForfaits.Application;
 using PilotageForfaits.Application.Abstractions;
@@ -61,6 +62,8 @@ else
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers()
+    // Franz HTTP bootstrap can customize MVC registration; explicitly retain this API assembly's controllers.
+    .AddApplicationPart(typeof(ProjetsController).Assembly)
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();
