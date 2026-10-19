@@ -1,6 +1,6 @@
 using Franz.Common.EntityFramework.Auditing;
 using Franz.Common.Mediator.Dispatchers;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PilotageForfaits.Domain.Entites;
@@ -10,25 +10,25 @@ using Xunit;
 
 namespace PilotageForfaits.Infrastructure.Tests;
 
-public sealed class SqlServerFactAttribute : FactAttribute
+public sealed class PostgreSqlFactAttribute : FactAttribute
 {
-    public SqlServerFactAttribute()
+    public PostgreSqlFactAttribute()
     {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASTROLABA_SQLSERVER")))
-            Skip = "Set ASTROLABA_SQLSERVER to run SQL Server provider integration tests.";
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASTROLABA_POSTGRES")))
+            Skip = "Set ASTROLABA_POSTGRES to run PostgreSQL provider integration tests.";
     }
 }
 
 /// <summary>
-/// Provider-level verification against SQL Server. Each test migrates a fresh database so it
+/// Provider-level verification against PostgreSQL. Each test migrates a fresh database so it
 /// exercises the production provider and initial migration rather than EnsureCreated/SQLite.
 /// </summary>
-public sealed class SqlServerPersistenceIntegrationTests
+public sealed class PostgreSqlPersistenceIntegrationTests
 {
     private static PilotageDbContext CreateContext(string connectionString, string actor = "integration-test-actor")
     {
         var options = new DbContextOptionsBuilder<PilotageDbContext>()
-            .UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure())
+            .UseNpgsql(connectionString, postgres => postgres.EnableRetryOnFailure())
             .Options;
         var dispatcherServices = new ServiceCollection().BuildServiceProvider();
         return new PilotageDbContext(options, new FranzDispatcher(dispatcherServices), new FixedCurrentUserService(actor));
@@ -36,17 +36,29 @@ public sealed class SqlServerPersistenceIntegrationTests
 
     private static async Task WithFreshDatabaseAsync(Func<string, Task> action)
     {
-        var template = Environment.GetEnvironmentVariable("ASTROLABA_SQLSERVER");
+        var template = Environment.GetEnvironmentVariable("ASTROLABA_POSTGRES");
         Assert.False(string.IsNullOrWhiteSpace(template));
 
-        var target = new SqlConnectionStringBuilder(template!)
+        var target = new NpgsqlConnectionStringBuilder(template!)
         {
-            InitialCatalog = $"AstrolabaIntegration_{Guid.NewGuid():N}"
+            Database = $"astrolaba_integration_{Guid.NewGuid():N}"
         };
-        var databaseName = target.InitialCatalog;
+        var databaseName = target.Database;
+        var admin = new NpgsqlConnectionStringBuilder(template!)
+        {
+            Database = "postgres"
+        };
 
         try
         {
+            await using (var adminConnection = new NpgsqlConnection(admin.ConnectionString))
+            {
+                await adminConnection.OpenAsync();
+                await using var create = adminConnection.CreateCommand();
+                create.CommandText = $"CREATE DATABASE \"{databaseName}\"";
+                await create.ExecuteNonQueryAsync();
+            }
+
             await using (var migrationContext = CreateContext(target.ConnectionString))
                 await migrationContext.Database.MigrateAsync();
 
@@ -54,19 +66,15 @@ public sealed class SqlServerPersistenceIntegrationTests
         }
         finally
         {
-            var master = new SqlConnectionStringBuilder(target.ConnectionString)
-            {
-                InitialCatalog = "master"
-            };
-            await using var connection = new SqlConnection(master.ConnectionString);
-            await connection.OpenAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = $"IF DB_ID(N'{databaseName}') IS NOT NULL BEGIN ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{databaseName}]; END";
-            await command.ExecuteNonQueryAsync();
+            await using var adminConnection = new NpgsqlConnection(admin.ConnectionString);
+            await adminConnection.OpenAsync();
+            await using var drop = adminConnection.CreateCommand();
+            drop.CommandText = $"DROP DATABASE IF EXISTS \"{databaseName}\" WITH (FORCE)";
+            await drop.ExecuteNonQueryAsync();
         }
     }
 
-    [SqlServerFact]
+    [PostgreSqlFact]
     public async Task Fresh_migration_applies_audit_soft_delete_and_optimistic_concurrency()
     {
         await WithFreshDatabaseAsync(async connectionString =>
@@ -109,7 +117,7 @@ public sealed class SqlServerPersistenceIntegrationTests
         });
     }
 
-    [SqlServerFact]
+    [PostgreSqlFact]
     public async Task Explicit_transaction_rolls_back_saved_entities()
     {
         await WithFreshDatabaseAsync(async connectionString =>
@@ -135,7 +143,7 @@ public sealed class SqlServerPersistenceIntegrationTests
         });
     }
 
-    [SqlServerFact]
+    [PostgreSqlFact]
     public async Task Journal_writer_uses_the_same_unit_of_work_as_business_mutations()
     {
         await WithFreshDatabaseAsync(async connectionString =>
@@ -181,7 +189,7 @@ public sealed class SqlServerPersistenceIntegrationTests
         });
     }
 
-    [SqlServerFact]
+    [PostgreSqlFact]
     public async Task Permanent_project_removal_deletes_dependent_rows()
     {
         await WithFreshDatabaseAsync(async connectionString =>
@@ -193,7 +201,7 @@ public sealed class SqlServerPersistenceIntegrationTests
                 var project = new Projet
                 {
                     Client = "Client",
-                    Nom = "Projet SQL Server",
+                    Nom = "Projet PostgreSQL",
                     CreeLe = DateTimeOffset.UtcNow
                 };
                 context.Projets.Add(project);
@@ -224,7 +232,7 @@ public sealed class SqlServerPersistenceIntegrationTests
 
     private static Utilisateur CreateUser(string name) => new()
     {
-        IdentifiantExterne = $"sql-server-{Guid.NewGuid():N}",
+        IdentifiantExterne = $"postgresql-{Guid.NewGuid():N}",
         Nom = name,
         Prenom = "Integration",
         Email = $"{Guid.NewGuid():N}@example.invalid",

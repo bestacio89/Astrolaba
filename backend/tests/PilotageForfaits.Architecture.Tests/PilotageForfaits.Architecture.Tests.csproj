@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\PilotageForfaits.Api\PilotageForfaits.Api.csproj" />
+    <ProjectReference Include="..\..\src\PilotageForfaits.Client.Http\PilotageForfaits.Client.Http.csproj" />
     <ProjectReference Include="..\..\src\PilotageForfaits.Contracts\PilotageForfaits.Contracts.csproj" />
     <ProjectReference Include="..\..\src\PilotageForfaits.Application\PilotageForfaits.Application.csproj" />
     <ProjectReference Include="..\..\src\PilotageForfaits.Domain\PilotageForfaits.Domain.csproj" />

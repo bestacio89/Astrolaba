@@ -23,7 +23,11 @@ public static class DependencyInjection
     {
         var chaine = configuration.GetConnectionString("Pilotage")
             ?? throw new InvalidOperationException("Chaîne de connexion « ConnectionStrings:Pilotage » absente de la configuration.");
-        services.AddDbContext<PilotageDbContext>(o => o.UseSqlServer(chaine, sql => sql.EnableRetryOnFailure()));
+        if (string.IsNullOrWhiteSpace(chaine))
+            throw new InvalidOperationException("La chaîne de connexion « ConnectionStrings:Pilotage » est vide. Configurez-la via les secrets de développement ou ConnectionStrings__Pilotage.");
+
+        services.AddDbContext<PilotageDbContext>(o =>
+            o.UseNpgsql(chaine, postgres => postgres.EnableRetryOnFailure()));
         services.AddScoped<IInitialiseurBaseDeDeveloppement, InitialiseurBaseDeDeveloppement>();
         services.AddUnitOfWork<PilotageDbContext>();
         services.AddScoped<DbContextBase>(sp => sp.GetRequiredService<PilotageDbContext>());

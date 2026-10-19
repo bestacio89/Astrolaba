@@ -16,8 +16,8 @@ echo "1/3 Suppression de la base de développement…"
 dotnet build --nologo -v q
 dotnet ef database drop --force --no-build "${commun[@]}"
 echo "2/3 Suppression des anciennes migrations…"
-rm -rf src/PilotageForfaits.Infrastructure/Donnees/Migrations
+rm -rf src/PilotageForfaits.Infrastructure/Migrations
 echo "3/3 Création de la migration initiale, à jour du modèle…"
-dotnet ef migrations add Initiale "${commun[@]}" --output-dir Donnees/Migrations
+dotnet ef migrations add Initiale "${commun[@]}" --output-dir Migrations
 echo "Terminé. Lancez l'API (dotnet run --project src/PilotageForfaits.Api) : elle crée la base."
-echo "Pensez à enregistrer le dossier Donnees/Migrations dans Git (il remplace l'ancien)."
+echo "Pensez à enregistrer le dossier Migrations dans Git (il remplace l'ancien)."

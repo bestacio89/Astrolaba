@@ -26,7 +26,7 @@ soft-delete semantics and global query filters.
 
 Database initialization and EF exception translation belong to Infrastructure. The API
 may invoke the development initializer as part of host startup, but it must not reference
-`PilotageDbContext`, EF Core runtime APIs, or SQL Server provider exceptions. HTTP error
+`PilotageDbContext`, EF Core runtime APIs, or PostgreSQL provider exceptions. HTTP error
 mapping consumes application-level exceptions such as `ConflitException` only.
 
 The API host follows HeroService's operational bootstrap selectively: structured host logging,
@@ -38,7 +38,7 @@ The Franz transaction pipeline remains intentionally disabled until command-leve
 
 Astrolaba intentionally retains one exceptional physical-delete workflow for projects
 created by mistake. It must remain explicit, authorization-protected, transactionally
-atomic, dependency ordered, and tested against SQL Server. It must not become a second
+atomic, dependency ordered, and tested against PostgreSQL. It must not become a second
 general-purpose delete lifecycle alongside Franz.
 
 ## Application boundary
@@ -108,11 +108,11 @@ and that tracking writes depend on the focused persistence port. Model tests enf
 registration, generated Guid identities, concurrency tokens, restricted foreign keys,
 decimal precision, and project ownership.
 
-SQL Server integration tests are configured in CI against a fresh database migrated from
+PostgreSQL integration tests are configured in CI against a fresh database migrated from
 `InitialCreate`. They verify audit actor/timestamps, soft-delete filtering, stale-write
 concurrency conflicts, explicit transaction rollback, and permanent project deletion with
 dependent rows. SQLite tests remain useful for fast persistence checks but do not substitute
-for SQL Server DDL and locking validation.
+for PostgreSQL DDL and locking validation.
 
 The Franz transaction pipeline remains disabled until command-level atomicity is established.
 Tracking commands currently persist through their focused port before recalculating the

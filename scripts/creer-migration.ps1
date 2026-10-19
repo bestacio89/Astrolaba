@@ -6,5 +6,5 @@ $env:ASPNETCORE_ENVIRONMENT = 'Development'
 Push-Location (Join-Path $PSScriptRoot '..\backend')
 try {
   dotnet tool restore
-  dotnet ef migrations add $Nom --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --output-dir Donnees/Migrations
+  dotnet ef migrations add $Nom --project src/PilotageForfaits.Infrastructure --startup-project src/PilotageForfaits.Api --output-dir Migrations
 } finally { Pop-Location }

@@ -12,7 +12,7 @@ using PilotageForfaits.Infrastructure.Donnees;
 namespace PilotageForfaits.Api.Tests;
 
 /// <summary>
-/// Démarre l'API complète en mémoire, avec une base SQLite en mémoire (au lieu de SQL Server),
+/// Démarre l'API complète en mémoire, avec une base SQLite en mémoire (au lieu de PostgreSQL),
 /// des utilisateurs fictifs et une date du jour fixe (06/10/2026, celle des scénarios de référence).
 /// </summary>
 public sealed class FabriqueApi : WebApplicationFactory<Program>
@@ -27,7 +27,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         // lues de façon sûre au tout début (avant les réglages propres à la fabrique de tests).
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Tests");
         Environment.SetEnvironmentVariable("Authentification__Mode", "Dev");
-        Environment.SetEnvironmentVariable("ConnectionStrings__Pilotage", "Server=inutilise-dans-les-tests");
+        Environment.SetEnvironmentVariable("ConnectionStrings__Pilotage", "Host=localhost;Database=unused;Username=postgres;Password=unused");
         var utilisateurs = new[]
         {
             ("chef", "oid-chef", "Camille", "Martin", "ChefDeProjet"),
@@ -64,7 +64,7 @@ public sealed class FabriqueApi : WebApplicationFactory<Program>
         builder.UseEnvironment("Tests");
         builder.ConfigureTestServices(services =>
         {
-            // remplace SQL Server par SQLite en mémoire
+            // remplace PostgreSQL par SQLite en mémoire
             services.RemoveAll<DbContextOptions<PilotageDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<PilotageDbContext>>();
             services.AddDbContext<PilotageDbContext>(o => o.UseSqlite(_connexion));
