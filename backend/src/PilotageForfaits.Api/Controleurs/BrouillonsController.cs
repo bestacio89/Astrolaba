@@ -14,7 +14,7 @@ namespace PilotageForfaits.Api.Controleurs;
 /// </summary>
 [ApiController]
 [Authorize]
-[Route("api/brouillons")]
+[Route("brouillons")]
 public sealed class BrouillonsController(IDispatcher dispatcher) : ControllerBase
 {
     /// <summary>Mes brouillons (auteur ou co-rédacteur).</summary>
@@ -74,7 +74,7 @@ public sealed class BrouillonsController(IDispatcher dispatcher) : ControllerBas
     public async Task<ActionResult<ProjetCreeReponse>> Lancer(Guid id, LancementCommande commande, CancellationToken annulation)
     {
         var projet = await dispatcher.SendAsync(new LancerBrouillonCommand(id, commande), annulation);
-        return Created($"/api/projets/{projet}", new ProjetCreeReponse(projet));
+        return Created($"/api/v1/projets/{projet}", new ProjetCreeReponse(projet));
     }
 }
 

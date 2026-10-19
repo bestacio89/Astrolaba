@@ -63,14 +63,14 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
 
     private static async Task<Guid> CreerAsync(HttpClient client, string nomClient, string projet)
     {
-        var reponse = await client.PostAsJsonAsync("/api/brouillons", new { client = nomClient, projet });
+        var reponse = await client.PostAsJsonAsync("/api/v1/brouillons", new { client = nomClient, projet });
         Assert.Equal(HttpStatusCode.Created, reponse.StatusCode);
         return (await reponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
     }
 
     private static async Task<JsonObject> EnregistrerAsync(HttpClient client, Guid id, int version, object contenu)
     {
-        var reponse = await client.PutAsJsonAsync($"/api/brouillons/{id}", new { version, contenu });
+        var reponse = await client.PutAsJsonAsync($"/api/v1/brouillons/{id}", new { version, contenu });
         Assert.Equal(HttpStatusCode.OK, reponse.StatusCode);
         return (await reponse.Content.ReadFromJsonAsync<JsonObject>())!;
     }
@@ -84,20 +84,20 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         var client = Unique("Client brouillon");
         var id = await CreerAsync(chef, client, "Projet privé");
 
-        var mesBrouillons = await chef.GetFromJsonAsync<JsonArray>("/api/brouillons");
+        var mesBrouillons = await chef.GetFromJsonAsync<JsonArray>("/api/v1/brouillons");
         Assert.Contains(mesBrouillons!, b => b!["id"]!.GetValue<Guid>() == id);
-        var projets = await chef.GetFromJsonAsync<JsonArray>("/api/projets");
+        var projets = await chef.GetFromJsonAsync<JsonArray>("/api/v1/projets");
         Assert.DoesNotContain(projets!, p => p!["client"]!.GetValue<string>() == client);
 
         // un autre chef de projet ne le voit pas, même par son adresse
-        Assert.Equal(HttpStatusCode.NotFound, (await _api.ClientPour("chef2").GetAsync($"/api/brouillons/{id}")).StatusCode);
-        Assert.DoesNotContain((await _api.ClientPour("chef2").GetFromJsonAsync<JsonArray>("/api/brouillons"))!, b => b!["id"]!.GetValue<Guid>() == id);
+        Assert.Equal(HttpStatusCode.NotFound, (await _api.ClientPour("chef2").GetAsync($"/api/v1/brouillons/{id}")).StatusCode);
+        Assert.DoesNotContain((await _api.ClientPour("chef2").GetFromJsonAsync<JsonArray>("/api/v1/brouillons"))!, b => b!["id"]!.GetValue<Guid>() == id);
     }
 
     [Fact]
     public async Task Un_consultant_ne_peut_pas_creer_de_brouillon()
     {
-        var reponse = await _api.ClientPour("consultant").PostAsJsonAsync("/api/brouillons", new { client = "C", projet = "P" });
+        var reponse = await _api.ClientPour("consultant").PostAsJsonAsync("/api/v1/brouillons", new { client = "C", projet = "P" });
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
     }
 
@@ -106,7 +106,7 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
     {
         var chef = _api.ClientPour("chef");
         var id = await CreerAsync(chef, Unique("Client vierge"), "Projet vierge");
-        var brouillon = await chef.GetFromJsonAsync<JsonObject>($"/api/brouillons/{id}");
+        var brouillon = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/brouillons/{id}");
         var analyse = brouillon!["analyse"]!;
         Assert.Null(analyse["synthese"]);
         Assert.True(analyse["bloquants"]!.GetValue<int>() >= 4); // période, profils, workload, échéancier
@@ -116,7 +116,7 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         Assert.NotEmpty(brouillon["contenu"]!["etapes"]!.AsArray());
         Assert.NotEmpty(brouillon["contenu"]!["metrique"]!.AsArray());
 
-        var lancement = await chef.PostAsJsonAsync($"/api/brouillons/{id}/lancement", new { version = brouillon["version"]!.GetValue<int>() });
+        var lancement = await chef.PostAsJsonAsync($"/api/v1/brouillons/{id}/lancement", new { version = brouillon["version"]!.GetValue<int>() });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, lancement.StatusCode);
     }
 
@@ -126,7 +126,7 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         var chef = _api.ClientPour("chef");
         var nomClient = Unique("Client rédigé");
         var id = await CreerAsync(chef, nomClient, "Projet rédigé");
-        var lu = await chef.GetFromJsonAsync<JsonObject>($"/api/brouillons/{id}");
+        var lu = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/brouillons/{id}");
         var enregistre = await EnregistrerAsync(chef, id, lu!["version"]!.GetValue<int>(), TspComplet(nomClient, "Projet rédigé"));
 
         var analyse = enregistre["analyse"]!;
@@ -138,18 +138,18 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         // planning de l'architecte : 6 JH répartis sur 6 ; chef de projet : 2 sur 2 → cohérent
         Assert.Equal("ok", analyse["rubriques"]!["planning"]!.GetValue<string>());
 
-        var lancement = await chef.PostAsJsonAsync($"/api/brouillons/{id}/lancement", new { version = enregistre["version"]!.GetValue<int>() });
+        var lancement = await chef.PostAsJsonAsync($"/api/v1/brouillons/{id}/lancement", new { version = enregistre["version"]!.GetValue<int>() });
         Assert.Equal(HttpStatusCode.Created, lancement.StatusCode);
         var projetId = (await lancement.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
 
-        var detail = await chef.GetFromJsonAsync<JsonObject>($"/api/projets/{projetId}");
+        var detail = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/projets/{projetId}");
         Assert.Equal("TSP rédigé dans l'application", detail!["origine"]!.GetValue<string>());
         Assert.Equal("Chef de projet", detail["monRole"]!.GetValue<string>());
         Assert.Equal(8m, detail["indicateurs"]!["prevu"]!.GetValue<decimal>());
-        Assert.Equal(HttpStatusCode.NotFound, (await chef.GetAsync($"/api/brouillons/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await chef.GetAsync($"/api/v1/brouillons/{id}")).StatusCode);
 
         // le forfait est désormais suivi : un nouveau brouillon du même forfait est refusé
-        var doublon = await chef.PostAsJsonAsync("/api/brouillons", new { client = nomClient, projet = "Projet rédigé" });
+        var doublon = await chef.PostAsJsonAsync("/api/v1/brouillons", new { client = nomClient, projet = "Projet rédigé" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, doublon.StatusCode);
     }
 
@@ -159,12 +159,12 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         var chef = _api.ClientPour("chef");
         var nomClient = Unique("Client échéancier");
         var id = await CreerAsync(chef, nomClient, "Projet");
-        var lu = await chef.GetFromJsonAsync<JsonObject>($"/api/brouillons/{id}");
+        var lu = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/brouillons/{id}");
         var enregistre = await EnregistrerAsync(chef, id, lu!["version"]!.GetValue<int>(), TspComplet(nomClient, "Projet", derniereEcheance: 0.3m));
         Assert.Equal(1, enregistre["analyse"]!["bloquants"]!.GetValue<int>());
         Assert.Contains(enregistre["analyse"]!["controles"]!.AsArray(), c => c!["cle"]!.GetValue<string>() == "echeancier.total" && c["niveau"]!.GetValue<string>() == "bloquant");
 
-        var lancement = await chef.PostAsJsonAsync($"/api/brouillons/{id}/lancement", new { version = enregistre["version"]!.GetValue<int>() });
+        var lancement = await chef.PostAsJsonAsync($"/api/v1/brouillons/{id}/lancement", new { version = enregistre["version"]!.GetValue<int>() });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, lancement.StatusCode);
         var probleme = await lancement.Content.ReadFromJsonAsync<JsonObject>();
         Assert.Contains("80 %", probleme!["detail"]!.GetValue<string>());
@@ -176,10 +176,10 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         var chef = _api.ClientPour("chef");
         var nomClient = Unique("Client conflit");
         var id = await CreerAsync(chef, nomClient, "Projet");
-        var version = (await chef.GetFromJsonAsync<JsonObject>($"/api/brouillons/{id}"))!["version"]!.GetValue<int>();
+        var version = (await chef.GetFromJsonAsync<JsonObject>($"/api/v1/brouillons/{id}"))!["version"]!.GetValue<int>();
         await EnregistrerAsync(chef, id, version, TspComplet(nomClient, "Projet"));
 
-        var perime = await chef.PutAsJsonAsync($"/api/brouillons/{id}", new { version, contenu = TspComplet(nomClient, "Projet") });
+        var perime = await chef.PutAsJsonAsync($"/api/v1/brouillons/{id}", new { version, contenu = TspComplet(nomClient, "Projet") });
         Assert.Equal(HttpStatusCode.Conflict, perime.StatusCode);
     }
 
@@ -187,24 +187,24 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
     public async Task Le_co_redacteur_invite_voit_et_complete_le_brouillon_mais_ne_le_lance_pas()
     {
         var chef = _api.ClientPour("chef");
-        await _api.ClientPour("chef2").GetAsync("/api/moi"); // première connexion : la personne est connue de l'application
+        await _api.ClientPour("chef2").GetAsync("/api/v1/moi"); // première connexion : la personne est connue de l'application
         var nomClient = Unique("Client co-rédaction");
         var id = await CreerAsync(chef, nomClient, "Projet");
-        var invitation = await chef.PutAsJsonAsync($"/api/brouillons/{id}/co-redacteur", new { email = "CHEF2@exemple.fr" });
+        var invitation = await chef.PutAsJsonAsync($"/api/v1/brouillons/{id}/co-redacteur", new { email = "CHEF2@exemple.fr" });
         Assert.Equal(HttpStatusCode.OK, invitation.StatusCode);
         // l'invitation change la version : l'auteur continue d'enregistrer avec la version renvoyée
         var versionApresInvitation = (await invitation.Content.ReadFromJsonAsync<JsonObject>())!["version"]!.GetValue<int>();
         await EnregistrerAsync(chef, id, versionApresInvitation, TspComplet(nomClient, "Projet"));
 
         var co = _api.ClientPour("chef2");
-        var lu = await co.GetFromJsonAsync<JsonObject>($"/api/brouillons/{id}");
+        var lu = await co.GetFromJsonAsync<JsonObject>($"/api/v1/brouillons/{id}");
         Assert.False(lu!["estCreateur"]!.GetValue<bool>());
         var enregistre = await EnregistrerAsync(co, id, lu["version"]!.GetValue<int>(), TspComplet(nomClient, "Projet"));
-        var lancement = await co.PostAsJsonAsync($"/api/brouillons/{id}/lancement", new { version = enregistre["version"]!.GetValue<int>() });
+        var lancement = await co.PostAsJsonAsync($"/api/v1/brouillons/{id}/lancement", new { version = enregistre["version"]!.GetValue<int>() });
         Assert.Equal(HttpStatusCode.Forbidden, lancement.StatusCode);
 
         // inconnu de l'application : refusé avec un message clair
-        var inconnu = await chef.PutAsJsonAsync($"/api/brouillons/{id}/co-redacteur", new { email = "personne@exemple.fr" });
+        var inconnu = await chef.PutAsJsonAsync($"/api/v1/brouillons/{id}/co-redacteur", new { email = "personne@exemple.fr" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, inconnu.StatusCode);
     }
 
@@ -214,13 +214,13 @@ public sealed class BrouillonsApiTests : IClassFixture<FabriqueApi>
         var chef = _api.ClientPour("chef");
         var contenu = new ByteArrayContent(await File.ReadAllBytesAsync(OutilsTests.Donnees("tsp-exemple-b.xlsx")));
         contenu.Headers.ContentType = new MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        var import = await chef.PostAsync("/api/brouillons/import-tsp", new MultipartFormDataContent { { contenu, "fichier", "tsp-exemple-b.xlsx" } });
+        var import = await chef.PostAsync("/api/v1/brouillons/import-tsp", new MultipartFormDataContent { { contenu, "fichier", "tsp-exemple-b.xlsx" } });
         Assert.Equal(HttpStatusCode.Created, import.StatusCode);
         var id = (await import.Content.ReadFromJsonAsync<JsonObject>())!["id"]!.GetValue<Guid>();
-        var brouillon = await chef.GetFromJsonAsync<JsonObject>($"/api/brouillons/{id}");
+        var brouillon = await chef.GetFromJsonAsync<JsonObject>($"/api/v1/brouillons/{id}");
         Assert.Equal("ImportTsp", brouillon!["origineCode"]!.GetValue<string>());
 
-        var export = await chef.GetAsync($"/api/brouillons/{id}/export");
+        var export = await chef.GetAsync($"/api/v1/brouillons/{id}/export");
         Assert.Equal(HttpStatusCode.OK, export.StatusCode);
         var octets = await export.Content.ReadAsByteArrayAsync();
 

@@ -8,7 +8,7 @@ namespace PilotageForfaits.Api.Controleurs;
 /// <summary>La personne connectée et ce qu'elle peut faire (sert à adapter l'interface).</summary>
 [ApiController]
 [Authorize]
-[Route("api/moi")]
+[Route("moi")]
 public sealed class MoiController(IDispatcher dispatcher) : ControllerBase
 {
     [HttpGet]

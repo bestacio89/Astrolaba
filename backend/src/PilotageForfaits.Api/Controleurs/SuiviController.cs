@@ -14,7 +14,7 @@ namespace PilotageForfaits.Api.Controleurs;
 /// </summary>
 [ApiController]
 [Authorize]
-[Route("api/projets/{id:guid}")]
+[Route("projets/{id:guid}")]
 public sealed class SuiviController(IDispatcher dispatcher) : ControllerBase
 {
     /// <summary>Saisies, indicateurs calculés et droits de l'utilisateur sur le projet.</summary>
