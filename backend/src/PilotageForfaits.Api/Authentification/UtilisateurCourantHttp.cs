@@ -31,10 +31,17 @@ public sealed class UtilisateurCourantHttp(IHttpContextAccessor accesseur) : IUt
 
     public string Email => Valeur("preferred_username", "email", ClaimTypes.Email, ClaimTypes.Upn);
 
-    public IReadOnlyCollection<string> Roles =>
+    /// <summary>
+    /// Identifiants immuables des groupes Entra ID présents dans le jeton d'accès.
+    /// Les noms d'affichage des groupes ne sont jamais utilisés comme autorité d'accès.
+    /// </summary>
+    public IReadOnlyCollection<string> Groupes =>
         (Utilisateur?.Claims ?? [])
-            .Where(c => c.Type is "roles" or ClaimTypes.Role)
+            .Where(c => c.Type is "groups"
+                or "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"
+                or ClaimTypes.GroupSid)
             .Select(c => c.Value)
-            .Distinct()
-            .ToList();
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 }

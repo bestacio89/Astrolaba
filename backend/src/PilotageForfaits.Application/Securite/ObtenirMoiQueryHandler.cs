@@ -1,11 +1,10 @@
 using Franz.Common.Mediator.Handlers;
-using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Contracts.Moi;
 
 namespace PilotageForfaits.Application.Securite;
 
 /// <summary>Construit le contexte utilisateur depuis les services d'authentification applicatifs.</summary>
-public sealed class ObtenirMoiQueryHandler(ServiceAcces acces, IUtilisateurCourant courant)
+public sealed class ObtenirMoiQueryHandler(ServiceAcces acces)
     : IQueryHandler<ObtenirMoiQuery, MoiDto>
 {
     public async Task<MoiDto> Handle(ObtenirMoiQuery query, CancellationToken cancellationToken)
@@ -16,7 +15,7 @@ public sealed class ObtenirMoiQueryHandler(ServiceAcces acces, IUtilisateurCoura
             utilisateur.Prenom,
             utilisateur.Nom,
             utilisateur.Email,
-            courant.Roles.ToList(),
+            acces.RolesCourants,
             acces.PeutCreerUnProjet,
             acces.VoitTousLesProjets);
     }

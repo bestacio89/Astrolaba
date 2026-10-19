@@ -23,16 +23,20 @@ public sealed class ProjetsService(
         var utilisateur = await acces.UtilisateurAsync(annulation);
         var donneesListe = await persistence.ListerAsync(
             utilisateur.Id, acces.VoitTousLesProjets, archives, annulation);
-        var roles = donneesListe.Roles;
         var projets = donneesListe.Projets;
         var chefs = donneesListe.Chefs;
 
-        // Les indicateurs sont recalculés pour chaque projet (aucun résultat n'est stocké).
-        // Suffisant pour quelques dizaines de projets ; au-delà, prévoir un cache (voir docs/architecture.md).
+        // The persistence query scopes candidates to database assignments. Recheck each candidate
+        // against Entra group membership before returning any project data, including financial metrics.
+        // Indicators are recalculated per visible project; no result is persisted.
         var liste = new List<ProjetResumeDto>();
         foreach (var projet in projets)
         {
-            var role = roles.TryGetValue(projet.Id, out var r) ? r : RoleProjet.Pilotage;
+            var roleAutorise = await acces.RoleSurProjetAsync(projet.Id, annulation);
+            if (roleAutorise is null)
+                continue;
+
+            var role = roleAutorise.Value;
             var calcul = MoteurCalcul.Calculer(await constructeur.ChargerAsync(projet.Id, annulation), horloge.Aujourdhui);
             var voitMontants = ServiceAcces.VoitMontants(role);
             var aTraiter = PointsATraiter(calcul);
