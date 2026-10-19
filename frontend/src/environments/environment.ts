@@ -5,7 +5,7 @@
 export const environment = {
   production: true,
   /** Adresse de l'API (même domaine que l'application en production). */
-  api: '/api',
+  api: '/api/v1',
   auth: {
     mode: 'entra' as 'entra' | 'dev',
     clientId: 'A_RENSEIGNER',
