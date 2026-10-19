@@ -72,6 +72,20 @@ else
             throw new InvalidOperationException(
                 "La configuration Entra ID est incomplète. Configurez AzureAd:TenantId, AzureAd:ClientId et AzureAd:Audience via la configuration de déploiement.");
         }
+
+        var groupesEntra = config.GetSection("Authentification:GroupesEntra").Get<GroupesEntraConfiguration>();
+        var auMoinsUnGroupeConfigure = groupesEntra is not null &&
+            new[]
+            {
+                groupesEntra.Consultant, groupesEntra.ChefDeProjet, groupesEntra.Pilotage,
+                groupesEntra.Lecteur, groupesEntra.Administrateur
+            }.SelectMany(groupes => groupes).Any(groupe => !string.IsNullOrWhiteSpace(groupe));
+
+        if (!auMoinsUnGroupeConfigure)
+        {
+            throw new InvalidOperationException(
+                "Aucun groupe Entra ID n'est configuré. Renseignez Authentification:GroupesEntra avec les identifiants d'objet des groupes autorisés.");
+        }
     }
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
