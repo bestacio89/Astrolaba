@@ -16,6 +16,7 @@
     <PackageReference Include="Franz.Common.Mediator" />
     <PackageReference Include="Franz.Common.Logging" />
     <PackageReference Include="Franz.Common.Mediator.Polly" />
+    <PackageReference Include="Franz.Common.Http.Bootstrap" />
     <!-- Nécessaire pour la commande « dotnet ef migrations add » lancée depuis ce projet. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
