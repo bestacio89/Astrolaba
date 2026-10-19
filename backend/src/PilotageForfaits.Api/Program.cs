@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Franz.Common.Mediator.Extensions;
 using Franz.Common.EntityFramework.Auditing;
+using Franz.Common.Http.Bootstrap.Extensions;
 using Franz.Common.Logging.Extensions;
 using Franz.Common.Mediator.Polly;
 using PilotageForfaits.Application.Projets;
@@ -11,6 +12,7 @@ using PilotageForfaits.Api.Erreurs;
 using PilotageForfaits.Application;
 using PilotageForfaits.Application.Abstractions;
 using PilotageForfaits.Infrastructure;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseLog();
@@ -51,6 +53,7 @@ builder.Services.AddExceptionHandler<GestionnaireErreurs>();
 builder.Services.AddOpenApi(); // description de l'API : /openapi/v1.json (sert à générer le client Angular)
 
 var app = builder.Build();
+app.Lifetime.ApplicationStopped.Register(Log.CloseAndFlush);
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

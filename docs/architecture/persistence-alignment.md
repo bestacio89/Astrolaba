@@ -121,7 +121,7 @@ changes and the journal write must remain in the same save operation.
 
 ## Out of scope
 
-- Changing the database provider without an explicit design decision.
+- Reintroducing SQL Server-specific persistence configuration; PostgreSQL is the selected relational provider for Astrolaba.
 - Weakening audit or soft-delete behavior to make migration easier.
 - Enabling a transaction pipeline without tests that prove its transaction semantics.
 - Changing business rules, calculations, authorization, or TSP payload behavior.

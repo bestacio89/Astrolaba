@@ -71,7 +71,13 @@ La base locale est **PostgreSQL 17**. Démarrez-la avec Docker Compose depuis la
 docker compose up -d
 ```
 
-La chaîne de connexion locale est définie dans `backend/src/PilotageForfaits.Api/appsettings.Development.json` et correspond aux identifiants réservés au conteneur local. Ne réutilisez jamais ces identifiants en recette ou en production. En dehors du développement, configurez `ConnectionStrings__Pilotage` avec une chaîne de connexion fournie par l'environnement de déploiement ou un gestionnaire de secrets.
+La chaîne de connexion n'est pas stockée dans les fichiers de configuration suivis par Git. Pour le développement local, définissez-la avec User Secrets (depuis la racine du dépôt) :
+
+```bash
+dotnet user-secrets set "ConnectionStrings:Pilotage" 'Host=localhost;Port=5432;Database=PilotageForfaits;Username=postgres;Password=Dev_Pilotage_2026!;Include Error Detail=true' --project backend/src/PilotageForfaits.Api
+```
+
+Cette valeur correspond uniquement au compte du conteneur PostgreSQL local défini dans `docker-compose.yml`. Ne réutilisez jamais ces identifiants en recette ou en production. En déploiement, fournissez `ConnectionStrings__Pilotage` via l'environnement ou un gestionnaire de secrets.
 
 Une seule fois, faites confiance au certificat HTTPS de développement : `dotnet dev-certs https --trust`.
 
